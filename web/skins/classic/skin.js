@@ -40,8 +40,7 @@
       <path d="M40,46 Q45,50 46,58 Q47,64 49.5,58 Q51,50 60,46 Z" fill="${INK}"/>
       <path d="M50,46 V39" fill="none" ${O}/>
       <path d="M50,11 C60,25 60,34 50,39 C40,34 40,25 50,11 Z" fill="${PALE}" ${O}/>
-      <path d="M50,24 C54.5,30 53.5,34 50,36 C46.5,34 45.5,30 50,24 Z" fill="${INK}"/>
-      <path d="M30,25 L35.5,28.5 M70,25 L64.5,28.5 M26,38 H33 M74,38 H67" fill="none" ${O}/>`),
+      <path d="M50,24 C54.5,30 53.5,34 50,36 C46.5,34 45.5,30 50,24 Z" fill="${INK}"/>`),
     book: card(`<path d="M9,32 L50,39 L91,32 L91,75 L50,82 L9,75 Z" fill="${INK}"/>
       <path d="M13,27 Q33,21 50,33 L50,77 Q33,65 13,71 Z" fill="${PALE}" ${O}/><path d="M87,27 Q67,21 50,33 L50,77 Q67,65 87,71 Z" fill="${PALE}" ${O}/>
       <g transform="translate(31,41) scale(9.5)" style="color:${INK}">${whole(HALF.V)}</g><g transform="translate(69,41) scale(11.5)" style="color:${INK}">${whole(HALF.C)}</g>
