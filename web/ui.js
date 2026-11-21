@@ -32,9 +32,12 @@
       g += lit && lit[d] ? `<g filter="url(#hx-glow${e[d]})">${half}</g>` : half;
     }
     if (lit && lit.some(Boolean)) {
+      // inner glow: colour bleeding in from the symbol's own edges, nothing outside it
       defs = '<defs>' + [1, 2].map(k => `<filter id="hx-glow${k}" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="3.2" result="b"/><feFlood flood-color="${S.symbols[k].glow}"/><feComposite in2="b" operator="in" result="c"/>
-        <feMerge><feMergeNode in="c"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`).join('') + '</defs>';
+        <feComponentTransfer in="SourceAlpha" result="inv"><feFuncA type="table" tableValues="1 0"/></feComponentTransfer>
+        <feGaussianBlur in="inv" stdDeviation="${S.symbols[k].glowSize}" result="b"/><feFlood flood-color="${S.symbols[k].glow}"/><feComposite in2="b" operator="in" result="c"/>
+        <feComposite in="c" in2="SourceAlpha" operator="in" result="inner"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="inner"/><feMergeNode in="inner"/></feMerge></filter>`).join('') + '</defs>';
     }
     return `<svg viewBox="0 0 100 100">${defs}${g}</svg>`;
   }
