@@ -1,0 +1,16 @@
+[package]
+name = "heredox"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "replay"
+path = "src/replay.rs"
+
+[[bin]]
+name = "solve"
+path = "src/solve.rs"
+
+[profile.release]
+opt-level = 3
+debug = false
