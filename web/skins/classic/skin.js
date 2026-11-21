@@ -12,7 +12,9 @@
 
   // Menu pictures, drawn for a 100 x 100 card in the two inks of the tiles.
   const INK = '#17100d', PALE = '#ece9e3';
-  const card = inner => `<svg viewBox="0 0 100 100"><defs><radialGradient id="hx-parch" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ecbb5c"/><stop offset="1" stop-color="#cf8f30"/></radialGradient><clipPath id="hx-clip"><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z"/></clipPath></defs><rect width="100" height="100" rx="5" fill="#7a4a20"/><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z" fill="url(#hx-parch)"/><g clip-path="url(#hx-clip)">${inner}</g></svg>`;
+  let cardN = 0;
+  // each card carries its own gradient and clip ids, so one hidden copy cannot blank the rest
+  const card = inner => { const n = ++cardN; return `<svg viewBox="0 0 100 100"><defs><radialGradient id="hx-parch${n}" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ecbb5c"/><stop offset="1" stop-color="#cf8f30"/></radialGradient><clipPath id="hx-clip${n}"><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z"/></clipPath></defs><rect width="100" height="100" rx="5" fill="#7a4a20"/><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z" fill="url(#hx-parch${n})"/><g clip-path="url(#hx-clip${n})">${inner}</g></svg>`; };
   // One family: off-white shapes, 2.4 ink outlines, 5-wide ink trim bands.
   const O = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;
   const bare = {}, card0 = card;
@@ -53,6 +55,9 @@
   // the two sides, as cards for the choosing screen
   portraits.C = card(`<g transform="translate(50,50) scale(40)" style="color:${PALE}">${whole(HALF.C)}</g>`);
   portraits.V = card(`<g transform="translate(50,50) scale(34)" style="color:${INK}">${whole(HALF.V)}</g>`);
+
+  // the heredox: half Veridican, half Castian, as on the old app icon
+  portraits.heredox = card(`<g transform="translate(50,50) scale(38)"><path transform="scale(-1,1)" fill="${INK}" fill-rule="evenodd" d="${HALF.V}"/><path fill="${PALE}" fill-rule="evenodd" d="${HALF.C}"/></g>`);
 
   root.HeredoxSkin = {
     name: 'classic',
