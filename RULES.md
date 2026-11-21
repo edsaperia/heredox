@@ -21,7 +21,8 @@ Source: `all heredox tiles vector.ai`, confirmed by Edward (2026-11-21).
 ## Play
 
 1. Shuffle the tiles face down in a stack.
-2. Who moves first, and which symbol each player has, are both chosen at random.
+2. Veridican always moves first (Edward, 2026-11-21 14:34, for lore reasons).
+   Which player is Veridican is chosen at random.
 3. The first player places the top tile.
 4. Players then alternate. On your turn, draw the top tile and place it, in any
    rotation, sharing an edge with a tile already down. Tiles are never flipped.

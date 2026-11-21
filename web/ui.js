@@ -305,7 +305,7 @@
     mode = m; if (lv) level = lv;
     stage.querySelectorAll('.float, .glow').forEach(n => n.remove());
     floats = []; pending = false; drag = null;
-    game = new H.Game(H.shuffledDeck(Math.random), Math.random() < 0.5 ? 'C' : 'V', variant);
+    game = new H.Game(H.shuffledDeck(Math.random), 'V', variant);   // Veridican always moves first
     stage.classList.toggle('two', variant === 'two');
     you = Math.random() < 0.5 ? 'C' : 'V';
     closePanel(true);
