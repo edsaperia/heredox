@@ -56,8 +56,8 @@
   portraits.C = card(`<g transform="translate(50,50) scale(40)" style="color:${PALE}">${whole(HALF.C)}</g>`);
   portraits.V = card(`<g transform="translate(50,50) scale(34)" style="color:${INK}">${whole(HALF.V)}</g>`);
 
-  // the heredox: half Veridican, half Castian, as on the old app icon
-  portraits.heredox = card(`<g transform="translate(50,50) scale(38)"><path transform="scale(-1,1)" fill="${INK}" fill-rule="evenodd" d="${HALF.V}"/><path fill="${PALE}" fill-rule="evenodd" d="${HALF.C}"/></g>`);
+  // the heredox: half Veridican, half Castian, as on the old app icon; no card behind it
+  bare.heredox = `<svg viewBox="10 10 80 80"><g transform="translate(50,50) scale(38)"><path transform="scale(-1,1)" fill="${INK}" fill-rule="evenodd" d="${HALF.V}"/><path fill="${PALE}" fill-rule="evenodd" d="${HALF.C}"/></g></svg>`;
 
   root.HeredoxSkin = {
     name: 'classic',

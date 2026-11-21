@@ -157,7 +157,7 @@
     // when the game is over the result takes the tray's place, beside the finished floor
     const fin = !!game && game.over && ended;
     $('result').hidden = !fin;
-    $('result').querySelector('.emblem').innerHTML = fin ? S.portraits.heredox : '';   // never a hidden copy: its ids would blank the visible one
+    $('result').querySelector('.emblem').innerHTML = S.hats.heredox;
     $('tray').hidden = $('left').hidden = $('status').hidden = fin;
     if (fin) {
       const w = game.winner();
@@ -361,7 +361,7 @@
   function showMenu() {
     const cardBtn = (act, pic, label, lv) => `<button class="card" data-act="${act}"${lv ? ` data-level="${lv}"` : ''}>${S.portraits[pic]}<span>${label}</span></button>`;
     const lv = Object.keys(W.levels).map(k => cardBtn('1p', k, W.levels[k], k)).join('');
-    openPanel(`<div class="emblem">${S.portraits.heredox}</div><h2>${W.title}</h2><div class="cards">
+    openPanel(`<h2><span class="emblem">${S.hats.heredox}</span>${W.title}</h2><div class="cards">
       <div class="group">${lv}</div>
       <div class="group">${cardBtn('2p', 'two', W.twoPlayers)}${cardBtn('rules', 'book', W.howToPlay)}</div>
       </div>
