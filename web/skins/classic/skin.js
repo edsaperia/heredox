@@ -13,37 +13,40 @@
   // Menu pictures, drawn for a 100 x 100 card in the two inks of the tiles.
   const INK = '#17100d', PALE = '#ece9e3';
   const card = inner => `<svg viewBox="0 0 100 100"><defs><radialGradient id="hx-parch" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ecbb5c"/><stop offset="1" stop-color="#cf8f30"/></radialGradient><clipPath id="hx-clip"><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z"/></clipPath></defs><rect width="100" height="100" rx="5" fill="#7a4a20"/><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z" fill="url(#hx-parch)"/><g clip-path="url(#hx-clip)">${inner}</g></svg>`;
+  // One family: off-white shapes, 2.4 ink outlines, 5-wide ink trim bands.
+  const O = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;
   const portraits = {
     // zucchetto: a plain skullcap
-    novice: card(`<path d="M20,68 C20,36 80,36 80,68 Q50,76 20,68 Z" fill="${PALE}"/>
-      <path d="M50,44 C40,50 33,58 31,70 M50,44 C60,50 67,58 69,70 M50,44 V73" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M20.5,66 Q50,74.5 79.5,66" fill="none" stroke="${INK}" stroke-width="1.8"/>
-      <path d="M50,44 C46,36 54,36 50,44" fill="none" stroke="${PALE}" stroke-width="2.6" stroke-linecap="round"/>`),
-    // biretta: square cap with three ridges and a tuft
-    deacon: card(`<path d="M22,74 L27,47 L73,47 L78,74 Q50,80 22,74 Z" fill="${PALE}"/>
-      <path d="M27,48 C28,34 38,27 50,27 C62,27 72,34 73,48 Z" fill="${PALE}"/>
-      <path d="M31,46 C33,37 40,32 46,31 L44.5,46 Z M69,46 C67,37 60,32 54,31 L55.5,46 Z" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>
-      <path d="M24.5,50.5 H75.5 M23,71 Q50,77 77,71" fill="none" stroke="${INK}" stroke-width="1.8"/>`),
+    novice: card(`<g transform="translate(0,-3)"><path d="M19,68 C19,34 81,34 81,68 Q50,77 19,68 Z" fill="${PALE}" ${O}/>
+      <path d="M50,43 V66 M50,43 C40,48 33,55 31,65 M50,43 C60,48 67,55 69,65" fill="none" ${O}/>
+      <path d="M20.5,65 Q50,73.5 79.5,65" fill="none" stroke="${INK}" stroke-width="5"/>
+      <path d="M50,43 C45,34 55,34 50,43 Z" fill="${INK}" ${O}/></g>`),
+    // biretta: a square cap seen corner-on, with its three blades
+    deacon: card(`<path d="M20,46 L50,55 L80,46 L77,74 L50,84 L23,74 Z" fill="${PALE}" ${O}/>
+      <path d="M20,46 L50,37 L80,46 L50,55 Z" fill="${PALE}" ${O}/>
+      <path d="M50,46 L50,26 Q65,27 66,41.5 Z" fill="${PALE}" ${O}/>
+      <path d="M50,46 L50,26 Q34,28 34,50.5 Z" fill="${PALE}" ${O}/><path d="M50,46 L50,26 Q66,28 66,50.5 Z" fill="${PALE}" ${O}/>
+      <path d="M50,26 V46 M50,55 V84" fill="none" ${O}/>
+      <path d="M22.5,70 L50,80 L77.5,70" fill="none" stroke="${INK}" stroke-width="5" stroke-linejoin="miter"/>`),
     // mitre, with lappets
     abbot: card(`<path d="M36,62 L24,88 L33,91 L44,66 Z M64,62 L76,88 L67,91 L56,66 Z" fill="${INK}"/>
-      <path d="M26.5,84 L34.5,87 M73.5,84 L65.5,87" stroke="${PALE}" stroke-width="1.6"/>
-      <path d="M27,68 C22,46 37,26 50,10 C63,26 78,46 73,68 Q50,73 27,68 Z" fill="${PALE}" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M26.5,84 L34.5,87 M73.5,84 L65.5,87" stroke="${PALE}" stroke-width="1.8"/>
+      <path d="M27,68 C22,46 37,26 50,10 C63,26 78,46 73,68 Q50,73 27,68 Z" fill="${PALE}" ${O}/>
       <path d="M50,12 V70" stroke="${INK}" stroke-width="5"/><path d="M26.5,61 Q50,66 73.5,61" fill="none" stroke="${INK}" stroke-width="5"/>
-      <path d="M38,41 l3.5,6 l-3.5,6 l-3.5,-6 Z M62,41 l3.5,6 l-3.5,6 l-3.5,-6 Z" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`),
+      <path d="M38,40 l4,7 l-4,7 l-4,-7 Z M62,40 l4,7 l-4,7 l-4,-7 Z" fill="none" ${O}/>`),
     // a candle
-    two: card(`<path d="M26,82 H74 Q72,92 50,92 Q28,92 26,82 Z" fill="${INK}"/>
-      <path d="M41,46 H59 V82 H41 Z" fill="${PALE}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
-      <path d="M41,46 Q45,50 46,58 Q47,63 49,58 Q50,50 59,46 Z" fill="${INK}"/>
-      <path d="M50,46 V38" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
-      <path d="M50,12 C59,25 59,34 50,39 C41,34 41,25 50,12 Z" fill="${PALE}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
-      <path d="M50,24 C54,30 53,34 50,36 C47,34 46,30 50,24 Z" fill="${INK}"/>
-      <path d="M31,26 L36,29 M69,26 L64,29 M27,38 H33 M73,38 H67" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`),
-    book: card(`<path d="M9,31 L50,38 L91,31 L91,74 L50,81 L9,74 Z" fill="${INK}"/>
-      <path d="M13,27 Q33,21 50,33 L50,76 Q33,64 13,70 Z" fill="${PALE}"/><path d="M87,27 Q67,21 50,33 L50,76 Q67,64 87,70 Z" fill="${PALE}"/>
-      <path d="M50,33 V76" stroke="${INK}" stroke-width="1.2"/>
-      <g transform="translate(31,40) scale(9.5)" style="color:${INK}">${whole(HALF.V)}</g><g transform="translate(69,40) scale(11.5)" style="color:${INK}">${whole(HALF.C)}</g>
-      <g stroke="${INK}" stroke-width="1.3" stroke-linecap="round" fill="none"><path d="M20,57 Q32,53 43,60 M20,62 Q32,58 43,65 M80,57 Q68,53 57,60 M80,62 Q68,58 57,65"/></g>
-      <path d="M50,76 L47,92 L50,88 L53,92 Z" fill="${INK}"/>`),
+    two: card(`<path d="M25,81 H75 Q73,92 50,92 Q27,92 25,81 Z" fill="${INK}"/>
+      <path d="M40,46 H60 V81 H40 Z" fill="${PALE}" ${O}/>
+      <path d="M40,46 Q45,50 46,58 Q47,64 49.5,58 Q51,50 60,46 Z" fill="${INK}"/>
+      <path d="M50,46 V39" fill="none" ${O}/>
+      <path d="M50,11 C60,25 60,34 50,39 C40,34 40,25 50,11 Z" fill="${PALE}" ${O}/>
+      <path d="M50,24 C54.5,30 53.5,34 50,36 C46.5,34 45.5,30 50,24 Z" fill="${INK}"/>
+      <path d="M30,25 L35.5,28.5 M70,25 L64.5,28.5 M26,38 H33 M74,38 H67" fill="none" ${O}/>`),
+    book: card(`<path d="M9,32 L50,39 L91,32 L91,75 L50,82 L9,75 Z" fill="${INK}"/>
+      <path d="M13,27 Q33,21 50,33 L50,77 Q33,65 13,71 Z" fill="${PALE}" ${O}/><path d="M87,27 Q67,21 50,33 L50,77 Q67,65 87,71 Z" fill="${PALE}" ${O}/>
+      <g transform="translate(31,41) scale(9.5)" style="color:${INK}">${whole(HALF.V)}</g><g transform="translate(69,41) scale(11.5)" style="color:${INK}">${whole(HALF.C)}</g>
+      <path d="M20,58 Q32,54 43,61 M20,63.5 Q32,59.5 43,66.5 M80,58 Q68,54 57,61 M80,63.5 Q68,59.5 57,66.5" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M50,77 L46.5,93 L50,89 L53.5,93 Z" fill="${INK}"/>`),
   };
 
   root.HeredoxSkin = {
