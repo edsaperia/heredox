@@ -67,8 +67,8 @@
     hats: bare,   // the same drawings without the card behind them
     // unit-size drawings centred on the origin, radius about 1, using currentColor
     symbols: {
-      1: { color: '#ece9e3', held: '#b3121f', art: whole(HALF.C) },
-      2: { color: '#17100d', held: '#5a1d8c', art: whole(HALF.V) },
+      1: { color: '#ece9e3', held: '#c4573c', art: whole(HALF.C) },
+      2: { color: '#17100d', held: '#683a62', art: whole(HALF.V) },
     },
     words: {
       title: 'Heredox',
