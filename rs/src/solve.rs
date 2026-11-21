@@ -423,6 +423,33 @@ fn main() {
                 );
             }
         }
+
+        // positions with their exact values, one JSON object per line, for
+        // checking the JavaScript solver
+        "dump" => {
+            let left: u8 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(4);
+            let n: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(100);
+            let mut rng = Rng(424242 + left as u64);
+            let mut sv = Solver::new(Objective::WinOnly);
+            for _ in 0..n {
+                let s = random_position(&mut rng, left);
+                let v = sv.solve(&s);
+                let cells: Vec<String> = (0..16)
+                    .map(|i| {
+                        if s.mask >> i & 1 == 1 {
+                            let c = s.cells[i];
+                            format!("[{},{},{},{}]", c & 3, c >> 2 & 3, c >> 4 & 3, c >> 6 & 3)
+                        } else {
+                            "null".to_string()
+                        }
+                    })
+                    .collect();
+                println!(
+                    "{{\"mask\":{},\"cells\":[{}],\"counts\":[{},{},{},{},{}],\"diff\":{},\"pm\":{:.12},\"po\":{:.12}}}",
+                    s.mask, cells.join(","), s.counts[0], s.counts[1], s.counts[2], s.counts[3], s.counts[4], s.diff, v.0, v.1
+                );
+            }
+        }
         "root" => {
             let obj = if args.get(2).map(|s| s.as_str()) == Some("zerosum") { Objective::ZeroSum } else { Objective::WinOnly };
             let mut sv = Solver::new(obj);
