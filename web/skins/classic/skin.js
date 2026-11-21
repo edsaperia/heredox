@@ -62,6 +62,8 @@
   root.HeredoxSkin = {
     name: 'classic',
     portraits,
+    // the heredox inscribed in the page: half paths (unit radius) and the two tones the gradients run between
+    emblem: { v: HALF.V, c: HALF.C, dark: '#120c09', light: '#3d2b1e' },
     hats: bare,   // the same drawings without the card behind them
     // unit-size drawings centred on the origin, radius about 1, using currentColor
     symbols: {

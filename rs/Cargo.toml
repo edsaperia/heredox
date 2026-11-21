@@ -15,6 +15,10 @@ path = "src/solve.rs"
 name = "heredox-train"
 path = "src/train.rs"
 
+[[bin]]
+name = "exp"
+path = "src/exp.rs"
+
 [profile.release]
 opt-level = 3
 debug = false

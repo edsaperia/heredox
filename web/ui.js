@@ -75,6 +75,18 @@
     boardEl.style.left = L.bx + 'px'; boardEl.style.top = L.by + 'px';
     boardEl.style.width = boardEl.style.height = L.B + 'px';
     stage.style.setProperty('--s', L.s + 'px');
+    // The heredox, twice the height of the screen, inscribed in the page: the
+    // figure's gradient runs one way and the ground's the other.
+    const bw = L.W + 2 * L.ox, bh = L.H + 2 * L.oy, E = S.emblem;
+    const bg = $('bg');
+    bg.style.left = -L.ox + 'px'; bg.style.top = -L.oy + 'px';
+    bg.style.width = bw + 'px'; bg.style.height = bh + 'px';
+    bg.innerHTML = `<svg viewBox="0 0 ${bw} ${bh}" preserveAspectRatio="none"><defs>
+      <linearGradient id="bg-ground" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${bw}" y2="0"><stop offset="0" stop-color="${E.dark}"/><stop offset="1" stop-color="${E.light}"/></linearGradient>
+      <linearGradient id="bg-figure" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${bw}" y2="0"><stop offset="0" stop-color="${E.light}"/><stop offset="1" stop-color="${E.dark}"/></linearGradient>
+      <filter id="bg-soft" filterUnits="userSpaceOnUse" x="0" y="0" width="${bw}" height="${bh}"><feGaussianBlur stdDeviation="${bh * 0.0035}"/></filter></defs>
+      <rect width="${bw}" height="${bh}" fill="url(#bg-ground)"/>
+      <g filter="url(#bg-soft)"><g transform="translate(${bw / 2},${bh / 2}) scale(${bh})" fill="url(#bg-figure)" fill-rule="evenodd"><path transform="scale(-1,1)" d="${E.v}"/><path d="${E.c}"/></g></g></svg>`;
     // shrink the side panel's text until every button fits
     const sideEl = $('side');
     let f = Math.max(10, L.H / 26);
@@ -363,7 +375,7 @@
   function showMenu() {
     const cardBtn = (act, pic, label, lv) => `<button class="card" data-act="${act}"${lv ? ` data-level="${lv}"` : ''}>${S.portraits[pic]}<span>${label}</span></button>`;
     const lv = Object.keys(W.levels).map(k => cardBtn('1p', k, W.levels[k], k)).join('');
-    openPanel(`<h2><span class="emblem">${S.hats.heredox}</span>${W.title}</h2><div class="cards">
+    openPanel(`<h2>${W.title}</h2><div class="cards">
       <div class="group">${lv}</div>
       <div class="group">${cardBtn('2p', 'two', W.twoPlayers)}${cardBtn('rules', 'book', W.howToPlay)}</div>
       </div>
