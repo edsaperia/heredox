@@ -13,23 +13,32 @@
   // Menu pictures, drawn for a 100 x 100 card in the two inks of the tiles.
   const INK = '#17100d', PALE = '#ece9e3';
   const card = inner => `<svg viewBox="0 0 100 100"><defs><radialGradient id="hx-parch" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ecbb5c"/><stop offset="1" stop-color="#cf8f30"/></radialGradient><clipPath id="hx-clip"><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z"/></clipPath></defs><rect width="100" height="100" rx="5" fill="#7a4a20"/><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z" fill="url(#hx-parch)"/><g clip-path="url(#hx-clip)">${inner}</g></svg>`;
-  const robe = `<path d="M12,96 C12,76 27,69 40,66 L60,66 C73,69 88,76 88,96 Z" fill="${INK}"/>`;
-  const head = `<path d="M36,45 C36,33 42,28 50,28 C58,28 64,33 64,45 C64,56 58,63 50,63 C42,63 36,56 36,45 Z" fill="${PALE}"/>`;
-  const eyes = `<circle cx="44.5" cy="46" r="1.5" fill="${INK}"/><circle cx="55.5" cy="46" r="1.5" fill="${INK}"/>`;
   const portraits = {
-    novice: card(`${robe}<path d="M35,66 Q50,82 65,66 L61,63 Q50,74 39,63 Z" fill="${PALE}"/>${head}
-      <path d="M35.5,45 C34,34 41,31 50,31 C59,31 66,34 64.5,45 C62,38.5 57,36.5 50,36.5 C43,36.5 38,38.5 35.5,45 Z" fill="${INK}"/>
-      ${eyes}<path d="M46.5,55 Q50,57.5 53.5,55" fill="none" stroke="${INK}" stroke-width="1.3" stroke-linecap="round"/>`),
-    deacon: card(`${robe}<path d="M27,71 L37,67 L71,96 L57,96 Z" fill="${PALE}"/>
-      <path d="M46,79 h5 v-3 h3 v3 h5 v3 h-5 v6 h-3 v-6 h-5 Z" fill="${INK}" transform="rotate(40 52 82) translate(-3 2) scale(.8) translate(13 20)"/>${head}
-      <path d="M35.5,46 C32,24 68,24 64.5,46 C62,35 57,33 50,33 C43,33 38,35 35.5,46 Z" fill="${INK}"/>
-      ${eyes}<path d="M43,55 Q50,53 57,55 Q54,67 50,68 Q46,67 43,55 Z" fill="${INK}"/>`),
-    abbot: card(`${robe}<path d="M43,66 L37,96 L44,96 L48,68 Z M57,66 L63,96 L56,96 L52,68 Z" fill="${PALE}"/>
-      <path d="M79,96 V34" stroke="${INK}" stroke-width="3.2" fill="none"/><path d="M79,35 C79,20 93,22 90,32 C88.5,37 82.5,35.5 84.5,31" fill="none" stroke="${INK}" stroke-width="3.2" stroke-linecap="round"/>
-      ${head}<path d="M36,47 C36,66 44,80 50,83 C56,80 64,66 64,47 C60,56 40,56 36,47 Z" fill="${INK}"/><path d="M45,54 Q50,51.5 55,54" fill="none" stroke="${PALE}" stroke-width="1.6" stroke-linecap="round"/>
-      <path d="M35,36 C33,24 42,15 50,9 C58,15 67,24 65,36 Z" fill="${PALE}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M50,11 V35 M36,31 H64" stroke="${INK}" stroke-width="2.4"/>
-      <path d="M41.5,43.5 L47,45 M58.5,43.5 L53,45" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>${eyes.replace(/cy="46"/g, 'cy="47.5"')}`),
-    two: card(`${robe}<path d="M35,45 C35,32 41.5,26 50,26 C58.5,26 65,32 65,45 C65,57 58.5,64 50,64 C41.5,64 35,57 35,45 Z" fill="${INK}"/>`),
+    // zucchetto: a plain skullcap
+    novice: card(`<path d="M20,68 C20,36 80,36 80,68 Q50,76 20,68 Z" fill="${INK}"/>
+      <path d="M50,44 C40,50 33,58 31,70 M50,44 C60,50 67,58 69,70 M50,44 V73" fill="none" stroke="${PALE}" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M20.5,66 Q50,74.5 79.5,66" fill="none" stroke="${PALE}" stroke-width="1.8"/>
+      <path d="M50,44 C46,36 54,36 50,44" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`),
+    // biretta: square cap with three ridges and a tuft
+    deacon: card(`<path d="M22,74 L27,47 L73,47 L78,74 Q50,80 22,74 Z" fill="${INK}"/>
+      <path d="M27,48 C28,34 38,27 50,27 C62,27 72,34 73,48 Z" fill="${INK}"/>
+      <path d="M31,46 C33,37 40,32 46,31 L44.5,46 Z M69,46 C67,37 60,32 54,31 L55.5,46 Z" fill="none" stroke="${PALE}" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M24.5,50.5 H75.5 M23,71 Q50,77 77,71" fill="none" stroke="${PALE}" stroke-width="1.8"/>
+      <circle cx="50" cy="24" r="6.5" fill="${INK}"/><circle cx="50" cy="24" r="2.2" fill="${PALE}"/>`),
+    // mitre, with lappets
+    abbot: card(`<path d="M36,62 L24,88 L33,91 L44,66 Z M64,62 L76,88 L67,91 L56,66 Z" fill="${INK}"/>
+      <path d="M26.5,84 L34.5,87 M73.5,84 L65.5,87" stroke="${PALE}" stroke-width="1.6"/>
+      <path d="M27,68 C22,46 37,26 50,10 C63,26 78,46 73,68 Q50,73 27,68 Z" fill="${PALE}" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M50,12 V70" stroke="${INK}" stroke-width="5"/><path d="M26.5,61 Q50,66 73.5,61" fill="none" stroke="${INK}" stroke-width="5"/>
+      <path d="M38,41 l3.5,6 l-3.5,6 l-3.5,-6 Z M62,41 l3.5,6 l-3.5,6 l-3.5,-6 Z" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`),
+    // a candle
+    two: card(`<path d="M26,82 H74 Q72,92 50,92 Q28,92 26,82 Z" fill="${INK}"/>
+      <path d="M41,46 H59 V82 H41 Z" fill="${PALE}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M41,46 Q45,50 46,58 Q47,63 49,58 Q50,50 59,46 Z" fill="${INK}"/>
+      <path d="M50,46 V38" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>
+      <path d="M50,12 C59,25 59,34 50,39 C41,34 41,25 50,12 Z" fill="${PALE}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M50,24 C54,30 53,34 50,36 C47,34 46,30 50,24 Z" fill="${INK}"/>
+      <path d="M31,26 L36,29 M69,26 L64,29 M27,38 H33 M73,38 H67" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`),
     book: card(`<path d="M9,31 L50,38 L91,31 L91,74 L50,81 L9,74 Z" fill="${INK}"/>
       <path d="M13,27 Q33,21 50,33 L50,76 Q33,64 13,70 Z" fill="${PALE}"/><path d="M87,27 Q67,21 50,33 L50,76 Q67,64 87,70 Z" fill="${PALE}"/>
       <path d="M50,33 V76" stroke="${INK}" stroke-width="1.2"/>
