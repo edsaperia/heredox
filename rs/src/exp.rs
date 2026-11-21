@@ -9,16 +9,18 @@
 //! After a turn with no choice nothing is left over, so the next player draws
 //! two. A restricted player who is left nothing draws one.
 //!
-//!   exp <none|reward|cost> <minutes> <threads> [games] [castian]
+//!   exp <none|reward|cost> <minutes> <threads> [games] [castian] [three]
 //! trains a net by self-play for that long, then plays it against itself.
 //! With `castian`, level games go to Castian (the second player) instead of
-//! Veridican. Results are appended to exp.log.
+//! Veridican. With `three`, there are three tiles to choose from each turn
+//! instead of two (two are left for the opponent, who draws one more).
+//! Results are appended to exp.log.
 use heredox::pos::{Fx, Rng, State};
 use heredox::two::{mover_is_first, placed, put, swap_ab, Move, NONE};
 use heredox::{rotate, DIRS, DISTINCT_ROTATIONS, TILES};
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -29,6 +31,9 @@ const H2: usize = 64;
 const EXACT_UNPLACED: u32 = 5;
 /// Level games go to the first player (Veridican) unless this is set.
 static LEVEL_TO_SECOND: AtomicBool = AtomicBool::new(false);
+
+/// How many tiles there are to choose from each turn (2 in today's game).
+static CHOICE: AtomicUsize = AtomicUsize::new(2);
 
 /// Does the player to move win a finished game?
 fn mover_wins(s: &State) -> bool {
@@ -46,15 +51,20 @@ enum Rule {
 #[derive(Clone, Copy)]
 pub struct Pos {
     s: State,
-    h: u8,    // tile left for the mover, or NONE
+    h: [u8; 2], // tiles left for the mover, sorted, NONE where there is none
     rn: bool, // the mover has no choice this turn
     ra: bool, // the player after the mover will have no choice
 }
 
 fn features(p: &Pos, out: &mut [f32; NF]) {
     let mut base = [0f32; heredox::two::NF];
-    heredox::two::features(&p.s, p.h, &mut base);
+    heredox::two::features(&p.s, NONE, &mut base);
     out[..166].copy_from_slice(&base);
+    // slots 152..157: how many of each kind are left for the mover; 157: none are
+    out[157] = if p.h[0] == NONE { 1.0 } else { 0.0 };
+    for &t in p.h.iter().filter(|&&t| t != NONE) {
+        out[152 + t as usize] += 0.5;
+    }
     out[166] = p.rn as u8 as f32;
     out[167] = p.ra as u8 as f32;
 }
@@ -200,56 +210,67 @@ fn made_split(s: &State, t: u8, r: u8, x: i32, y: i32) -> bool {
     false
 }
 
+fn left_of(p: &Pos) -> Vec<u8> {
+    p.h.iter().copied().filter(|&t| t != NONE).collect()
+}
+fn pack_left(mut v: Vec<u8>) -> [u8; 2] {
+    v.sort();
+    [v.first().copied().unwrap_or(NONE), v.get(1).copied().unwrap_or(NONE)]
+}
+
 /// Every way the mover's tiles can turn out: (probability, stack after, hand).
 fn deal(p: &Pos) -> Vec<(f64, State, Vec<u8>)> {
-    let s = p.s;
-    let rem = s.remaining() as f64;
-    let one = |hand_first: Option<u8>| -> Vec<(f64, State, Vec<u8>)> {
-        (0..5u8)
-            .filter(|&d| s.counts[d as usize] > 0)
-            .map(|d| {
-                let mut n = s;
-                n.counts[d as usize] -= 1;
-                let hand = match hand_first {
-                    Some(h) => vec![h, d],
-                    None => vec![d],
-                };
-                (s.counts[d as usize] as f64 / rem, n, hand)
-            })
-            .collect()
-    };
-    if p.rn {
-        return if p.h != NONE { vec![(1.0, s, vec![p.h])] } else if rem > 0.0 { one(None) } else { vec![] };
+    let left = left_of(p);
+    let rem = p.s.remaining() as usize;
+    let want = if p.rn { if left.is_empty() { 1 } else { 0 } } else { CHOICE.load(Ordering::Relaxed).saturating_sub(left.len()) };
+    let n = want.min(rem);
+    if left.is_empty() && n == 0 {
+        return vec![];
     }
-    if p.h != NONE {
-        return if rem == 0.0 { vec![(1.0, s, vec![p.h])] } else { one(Some(p.h)) };
-    }
-    if rem >= 2.0 {
-        let mut out = Vec::new();
-        for a in 0..5u8 {
-            for b in a..5u8 {
-                let (ca, cb) = (s.counts[a as usize] as f64, s.counts[b as usize] as f64);
-                let pr = if a == b { ca * (ca - 1.0) } else { 2.0 * ca * cb } / (rem * (rem - 1.0));
-                if pr > 0.0 {
-                    let mut n = s;
-                    n.counts[a as usize] -= 1;
-                    n.counts[b as usize] -= 1;
-                    out.push((pr, n, vec![a, b]));
-                }
-            }
+    // draw n tiles one at a time, kinds in non-decreasing order, counting the orders each set stands for
+    fn go(s: State, from: u8, n: usize, pr: f64, hand: &mut Vec<u8>, out: &mut Vec<(f64, State, Vec<u8>)>) {
+        if n == 0 {
+            out.push((pr, s, hand.clone()));
+            return;
         }
-        return out;
+        let rem = s.remaining() as f64;
+        for d in from..5u8 {
+            let c = s.counts[d as usize];
+            if c == 0 {
+                continue;
+            }
+            let mut t = s;
+            t.counts[d as usize] -= 1;
+            hand.push(d);
+            go(t, d, n - 1, pr * c as f64 / rem, hand, out);
+            hand.pop();
+        }
     }
-    if rem == 1.0 { one(None) } else { vec![] }
+    let mut out = Vec::new();
+    let mut hand = left.clone();
+    go(p.s, 0, n, 1.0, &mut hand, &mut out);
+    // each unordered set of n draws was reached by one ordering only: scale by the number of orderings
+    for (pr, _, h) in out.iter_mut() {
+        let drawn = &h[left.len()..];
+        let mut orders = (1..=drawn.len()).product::<usize>() as f64;
+        let mut i = 0;
+        while i < drawn.len() {
+            let j = drawn[i..].iter().take_while(|&&t| t == drawn[i]).count();
+            orders /= (1..=j).product::<usize>() as f64;
+            i += j;
+        }
+        *pr *= orders;
+    }
+    out
 }
 
 fn options(s: &State, hand: &[u8], ra_in: bool, rule: Rule) -> Vec<(Move, Pos, bool)> {
     let mut out = Vec::new();
     for (w, &t) in hand.iter().enumerate() {
-        if w == 1 && hand[0] == hand[1] {
+        if hand[..w].contains(&t) {
             continue;
         }
-        let other = if hand.len() == 2 { swap_ab(hand[1 - w]) } else { NONE };
+        let other = pack_left(hand.iter().enumerate().filter(|&(i, _)| i != w).map(|(_, &o)| swap_ab(o)).collect());
         let rots = if s.mask == 0 { 1 } else { DISTINCT_ROTATIONS[t as usize] };
         for (x, y) in s.legal_cells() {
             for r in 0..rots {
@@ -262,22 +283,24 @@ fn options(s: &State, hand: &[u8], ra_in: bool, rule: Rule) -> Vec<(Move, Pos, b
     out
 }
 
-fn key(p: &Pos) -> (u64, u32, u8) {
-    let flags = (p.rn as u8) << 4 | (p.ra as u8) << 5;
-    let mut best = (u64::MAX, u32::MAX, u8::MAX);
+fn key(p: &Pos) -> (u64, u32, u16) {
+    let flags = (p.rn as u16) << 8 | (p.ra as u16) << 9;
+    let code = |h: [u8; 2]| h[0] as u16 | (h[1] as u16) << 4 | flags;
+    let mirrored = pack_left(left_of(p).iter().map(|&t| swap_ab(t)).collect());
+    let mut best = (u64::MAX, u32::MAX, u16::MAX);
     let mut t = p.s;
     for _ in 0..4 {
         let a = t.raw_key();
-        best = best.min((a.0, a.1, p.h | flags));
+        best = best.min((a.0, a.1, code(p.h)));
         let b = t.mirror().raw_key();
-        best = best.min((b.0, b.1, swap_ab(p.h) | flags));
+        best = best.min((b.0, b.1, code(mirrored)));
         t = t.rot90();
     }
     best
 }
 
 struct Solver {
-    memo: HashMap<(u64, u32, u8), f64, BuildHasherDefault<Fx>>,
+    memo: HashMap<(u64, u32, u16), f64, BuildHasherDefault<Fx>>,
     rule: Rule,
     use_memo: bool,
 }
@@ -350,7 +373,7 @@ struct Sample {
 
 fn selfplay(net: &Net, solver: &mut Solver, rng: &mut Rng, eps: f64, lambda: f64, out: &mut Vec<Sample>) {
     let rule = solver.rule;
-    let mut pos = Pos { s: State::start(), h: NONE, rn: false, ra: false };
+    let mut pos = Pos { s: State::start(), h: [NONE, NONE], rn: false, ra: false };
     let mut recs: Vec<(Pos, f64, bool)> = Vec::new();
     let last_y;
     loop {
@@ -396,7 +419,7 @@ fn augment(smp: &Sample, rng: &mut Rng) -> Pos {
     }
     if rng.below(2) == 1 {
         p.s = p.s.mirror();
-        p.h = swap_ab(p.h);
+        p.h = pack_left(left_of(&p).iter().map(|&t| swap_ab(t)).collect());
     }
     p
 }
@@ -432,7 +455,7 @@ fn count_joins(s: &State) -> (usize, usize) {
 /// The net against itself, greedy, exact at the end.
 fn play(net: &Net, solver: &mut Solver, rng: &mut Rng, t: &mut Tally) {
     let rule = solver.rule;
-    let mut pos = Pos { s: State::start(), h: NONE, rn: false, ra: false };
+    let mut pos = Pos { s: State::start(), h: [NONE, NONE], rn: false, ra: false };
     loop {
         let (s, hand) = match sample(&pos, rng) {
             Some(x) => x,
@@ -511,8 +534,9 @@ fn self_play_tally(net: &Arc<Net>, rule: Rule, threads: usize, eval_games: usize
 fn report(rule: Rule, games: u64, hours: f64, t: &Tally) -> String {
     let n = t.games as f64;
     format!(
-        "{:?}{} {:5.2} h {:8} training games | self-play {} games: Veridican (first) wins {:.1}%, level {:.1}% | per game: {:.1} moves split a diocese, {:.1} turns with no choice, {:.1} held, {:.1} split",
-        rule, if LEVEL_TO_SECOND.load(Ordering::Relaxed) { " (level games to Castian)" } else { "" }, hours, games, t.games,
+        "{:?}{}{} {:5.2} h {:8} training games | self-play {} games: Veridican (first) wins {:.1}%, level {:.1}% | per game: {:.1} moves split a diocese, {:.1} turns with no choice, {:.1} held, {:.1} split",
+        rule, match CHOICE.load(Ordering::Relaxed) { 3 => " (three tiles)", 4 => " (four tiles)", _ => "" },
+        if LEVEL_TO_SECOND.load(Ordering::Relaxed) { " (level games to Castian)" } else { "" }, hours, games, t.games,
         100.0 * t.first_wins as f64 / n, 100.0 * t.level as f64 / n, t.split_moves as f64 / n, t.forced_turns as f64 / n, t.symbols as f64 / n, t.splits_at_end as f64 / n
     )
 }
@@ -531,14 +555,17 @@ fn main() {
         Some("reward") => Rule::Reward,
         Some("cost") => Rule::Cost,
         Some("selfcheck") => {
-            for rule in [Rule::None, Rule::Reward, Rule::Cost] {
+            for (rule, choice) in [(Rule::None, 2), (Rule::Reward, 2), (Rule::Cost, 2), (Rule::None, 3), (Rule::Cost, 3)] {
+                CHOICE.store(choice, Ordering::Relaxed);
+                let mut psum: f64 = 0.0;
                 let mut rng = Rng(99);
                 let net = Net::new(&mut Rng(3));
                 let mut worst: f64 = 0.0;
                 for _ in 0..40 {
                     // random play down to four unplaced tiles, then compare memo with plain search
-                    let mut pos = Pos { s: State::start(), h: NONE, rn: false, ra: false };
+                    let mut pos = Pos { s: State::start(), h: [NONE, NONE], rn: false, ra: false };
                     while 16 - placed(&pos.s) > 4 {
+                        psum = psum.max((deal(&pos).iter().map(|o| o.0).sum::<f64>() - 1.0).abs());
                         let (s, hand) = sample(&pos, &mut rng).unwrap();
                         let opts = options(&s, &hand, pos.ra, rule);
                         pos = opts[rng.below(opts.len())].1;
@@ -547,13 +574,13 @@ fn main() {
                     let (mut a, mut b) = (Solver::new(rule), Solver::new(rule));
                     b.use_memo = false;
                     worst = worst.max((a.solve(&pos) - b.solve(&pos)).abs());
-                    if rule == Rule::None {
+                    if rule == Rule::None && choice == 2 {
                         // with no rule this must agree with the game's own solver
-                        let v = heredox::two::Solver2::default().solve(&pos.s, pos.h);
+                        let v = heredox::two::Solver2::default().solve(&pos.s, pos.h[0]);
                         worst = worst.max((a.solve(&pos) - v).abs());
                     }
                 }
-                println!("{:?}: 40 endgames, memo against plain search, largest disagreement {:.2e}", rule, worst);
+                println!("{:?}, {} tiles to choose from: 40 endgames, memo against plain search, largest disagreement {:.2e}; deal probabilities off by at most {:.1e}", rule, choice, worst, psum);
             }
             return;
         }
@@ -565,8 +592,13 @@ fn main() {
     let minutes: f64 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(5.0);
     let threads: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(2);
     let eval_games: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(2000);
-    if args.get(5).map(|s| s.as_str()) == Some("castian") {
-        LEVEL_TO_SECOND.store(true, Ordering::Relaxed);
+    for a in args.iter().skip(5) {
+        match a.as_str() {
+            "castian" => LEVEL_TO_SECOND.store(true, Ordering::Relaxed),
+            "three" => CHOICE.store(3, Ordering::Relaxed),
+            "four" => CHOICE.store(4, Ordering::Relaxed),
+            _ => {}
+        }
     }
     let mut next_check = 0.125;
     let t0 = Instant::now();
