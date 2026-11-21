@@ -22,24 +22,16 @@
     const s = S.symbols[sym];
     return `<svg viewBox="-1.2 -1.2 2.4 2.4" style="color:${s.color}">${s.art}</svg>`;
   }
-  // lit: for each edge, whether its half is part of a completed symbol
+  // lit: for each edge, whether its half is part of a completed symbol;
+  // completed symbols take their doctrine's colour
   function faceSVG(e, lit) {
-    let g = '', defs = '';
+    let g = '';
     for (let d = 0; d < 4; d++) {
       if (!e[d]) continue;
       const s = S.symbols[e[d]];
-      const half = `<g transform="translate(${MIDS[d][0]},${MIDS[d][1]}) scale(31)" style="color:${s.color}">${s.art}</g>`;
-      g += lit && lit[d] ? `<g filter="url(#hx-glow${e[d]})">${half}</g>` : half;
+      g += `<g transform="translate(${MIDS[d][0]},${MIDS[d][1]}) scale(31)" style="color:${lit && lit[d] ? s.held : s.color}">${s.art}</g>`;
     }
-    if (lit && lit.some(Boolean)) {
-      // inner glow: colour bleeding in from the symbol's own edges, nothing outside it
-      defs = '<defs>' + [1, 2].map(k => `<filter id="hx-glow${k}" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
-        <feComponentTransfer in="SourceAlpha" result="inv"><feFuncA type="table" tableValues="1 0"/></feComponentTransfer>
-        <feGaussianBlur in="inv" stdDeviation="${S.symbols[k].glowSize}" result="b"/><feFlood flood-color="${S.symbols[k].glow}"/><feComposite in2="b" operator="in" result="c"/>
-        <feComposite in="c" in2="SourceAlpha" operator="in" result="inner"/>
-        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="inner"/><feMergeNode in="inner"/></feMerge></filter>`).join('') + '</defs>';
-    }
-    return `<svg viewBox="0 0 100 100">${defs}${g}</svg>`;
+    return `<svg viewBox="0 0 100 100">${g}</svg>`;
   }
   function tileEl(e, cls, lit) {
     const el = document.createElement('div');
@@ -271,7 +263,7 @@
     for (const j of joins) {
       const el = document.createElement('div');
       el.className = 'glow';
-      const c = S.symbols[j.sym].color;
+      const c = S.symbols[j.sym].held;
       el.style.background = `radial-gradient(circle, ${c} 0%, ${c}88 30%, transparent 70%)`;
       el.style.left = (j.x + 0.5 + H.DIRS[j.d][0] * 0.5) * L.s + 'px';
       el.style.top = (j.y + 0.5 + H.DIRS[j.d][1] * 0.5) * L.s + 'px';
