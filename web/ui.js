@@ -51,6 +51,13 @@
     boardEl.style.left = L.bx + 'px'; boardEl.style.top = L.by + 'px';
     boardEl.style.width = boardEl.style.height = L.B + 'px';
     stage.style.setProperty('--s', L.s + 'px');
+    // shrink the side panel's text until every button fits
+    const sideEl = $('side');
+    let f = Math.max(10, L.H / 26);
+    while (sideEl.scrollHeight > L.H + 0.5 && f > 6) {
+      f -= 0.5;
+      stage.style.fontSize = f + 'px';
+    }
     centre();
   }
   function centre() {
@@ -337,5 +344,6 @@
     }
   });
   layout(); renderSide(); showMenu();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layout(); renderBoard(); });
   self.__heredox = { get game() { return game; }, get you() { return you; }, cellCentre, trayCentre, get L() { return L; } };
 })();
