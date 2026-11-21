@@ -10,8 +10,9 @@
   let game = null, mode = '1p', level = 'abbot', you = 'C';
   let pending = false;  // true while a human may move the tiles in hand
   let floats = [], drag = null, gen = 0, closable = false;
-  let variant = 'single';
-  try { variant = localStorage.getItem('heredox-variant') === 'two' ? 'two' : 'single'; } catch (e) { /* no storage */ }
+  // Two tiles is the main game. The one-tile game still works ('single') but
+  // its menu switch is commented out for now.
+  let variant = 'two';
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const isHuman = sym => mode === '2p' || sym === you;
@@ -333,7 +334,8 @@
       <div class="group">${lv}</div>
       <div class="group">${cardBtn('2p', 'two', W.twoPlayers)}${cardBtn('rules', 'book', W.howToPlay)}</div>
       </div>
-      <div class="switch">${Object.keys(W.variants).map(k => `<button data-act="variant" data-v="${k}" class="${k === variant ? 'on' : ''}">${W.variants[k]}</button>`).join('')}</div>`,
+      `, /* one-tile option, off for now:
+      <div class="switch">${Object.keys(W.variants).map(k => `<button data-act="variant" data-v="${k}" class="${k === variant ? 'on' : ''}">${W.variants[k]}</button>`).join('')}</div> */
       !!game && !game.over, 'menu');
   }
   function showRules() {
@@ -354,11 +356,7 @@
     if (act === '1p') newGame('1p', b.dataset.level);
     else if (act === '2p') newGame('2p');
     else if (act === 'again') newGame(mode);
-    else if (act === 'variant') {
-      variant = b.dataset.v;
-      try { localStorage.setItem('heredox-variant', variant); } catch (e) { /* no storage */ }
-      showMenu();
-    }
+    else if (act === 'variant') { variant = b.dataset.v; showMenu(); }
     else if (act === 'menu') showMenu();
     else if (act === 'rules') { const back = !game; showRules(); if (back) rulesFromMenu = true; }
   });

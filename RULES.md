@@ -47,13 +47,14 @@ half a symbol ahead. There are no draws.
 - The 4 × 4 boundary floats.
 - Equal counts go to the player who moved first (changed 13:53; before that
   draws existed and counted as a loss for both computer players).
-- The main game is the face-down stack: you see only the tile you have drawn.
+- The main game is Two tiles (changed 14:30; see below). The one-tile game
+  described under Play is kept in the engines but is off the menu for now.
 
-## Parked variants
+## Variants
 
 - **Face-up stack:** the next tile is visible (only the next one, not the
   whole order).
-- **Two tiles** (playable; Edward, 2026-11-21): there are always two tiles
+- **Two tiles** (the main game; Edward, 2026-11-21): there are always two tiles
   to pick from. The first player draws two. On your turn you turn and place
   whichever you like; the other remains for your opponent, and a new tile is
   drawn to join it. When the stack is empty the last tile is the one left

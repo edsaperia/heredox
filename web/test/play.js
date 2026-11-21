@@ -15,7 +15,6 @@ const path = require('path');
   await page.goto('file://' + path.resolve(__dirname, '../index.html'));
   await page.waitForTimeout(800);
   await page.screenshot({ path: out + '/01-menu.png' });
-  if (process.env.TWO) await page.click('button[data-v="two"]');
   await page.click('button[data-level="abbot"]');
   let shot = 2, myMoves = 0;
   for (let i = 0; i < 400; i++) {
