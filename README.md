@@ -12,3 +12,12 @@ Checks: `node web/test/replay.js transcripts.jsonl` replays Python games
 through the JavaScript engine; `node web/test/solver.js` checks the JavaScript
 solver against values from the Rust solver; `node web/test/play.js` plays a
 whole game in a headless browser.
+
+## Training the two-tile player
+
+`train/` holds a static Linux binary (`heredox-train`, built from
+`rs/src/train.rs`), a starting net and `run.sh`. Run `sh run.sh [hours]
+[threads]`; it resumes from `net.txt`, logs to `train.log`, and writes
+`net.json`. To use a trained net in the game, wrap `net.json` as
+`web/net.js` (`self.HeredoxNetData = …;`), run `node web/test/net_play.js`,
+then `./publish.sh`.

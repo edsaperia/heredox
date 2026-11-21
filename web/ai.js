@@ -236,11 +236,81 @@
     return pick(top, rand);
   }
 
+  // --- value network (two tiles) -------------------------------------------
+  // Trained by rs/src/train.rs. Input: a position just after a tile was
+  // placed, as the player about to draw sees it (their symbol is "own"), plus
+  // the tile left for them. Output: the chance that player wins.
+  let NET = null;
+  function setNet(d) {
+    if (!d) { NET = null; return; }
+    const w = Float32Array.from(d.w), nf = d.nf, h1 = d.h1, h2 = d.h2;
+    let o = 0;
+    const take = n => w.subarray(o, o += n);
+    NET = { nf, h1, h2, w1: take(nf * h1), b1: take(h1), w2: take(h2 * h1), b2: take(h2), w3: take(h2), b3: w[o], games: d.games };
+    if (o + 1 !== w.length || nf !== 166) throw new Error('net has the wrong shape');
+  }
+  const swapAB = t => (t === 0 ? 1 : t === 1 ? 0 : t);
+  function features(s, h) {              // h: type index of the tile left, or -1
+    const x = new Float32Array(166), [w, hh] = size(s), own = s.mover;
+    for (let i = 0; i < 16; i++) {
+      if (!(s.mask >> i & 1)) continue;
+      x[i * 9] = 1;
+      const cx = i % 4, cy = i >> 2;
+      for (let d = 0; d < 4; d++) {
+        const nx = cx + DIRS[d][0], ny = cy + DIRS[d][1];
+        if (filled(s, nx, ny)) continue;
+        const open = (DIRS[d][0] === 0 || (nx >= 0 && nx < 4) || w < 4) && (DIRS[d][1] === 0 || (ny >= 0 && ny < 4) || hh < 4);
+        const v = s.cells[i][d];
+        if (open && v) x[i * 9 + 2 * d + (v === own ? 1 : 2)] = 1;
+      }
+    }
+    if (s.mask) { x[144 + w - 1] = 1; x[148 + hh - 1] = 1; }
+    // seen from the other side, tile kinds A and B swap names
+    const rel = t => (own === 1 ? t : swapAB(t));
+    x[152 + (h < 0 ? 5 : rel(h))] = 1;
+    for (let t = 0; t < 5; t++) x[158 + rel(t)] = s.counts[t] / 4;
+    x[163] = (own === 1 ? s.diff : -s.diff) / 6;
+    x[164] = remaining(s) / 14;
+    x[165] = s.first === s.mover ? 1 : 0;
+    return x;
+  }
+  function netValue(s, h) {
+    const N = NET, x = features(s, h), a1 = Float32Array.from(N.b1), h1 = N.h1;
+    for (let i = 0; i < N.nf; i++) {
+      const xi = x[i];
+      if (xi !== 0) { const o = i * h1; for (let j = 0; j < h1; j++) a1[j] += xi * N.w1[o + j]; }
+    }
+    for (let j = 0; j < h1; j++) if (a1[j] < 0) a1[j] = 0;
+    let z = N.b3;
+    for (let k = 0; k < N.h2; k++) {
+      let acc = N.b2[k];
+      const o = k * h1;
+      for (let j = 0; j < h1; j++) acc += N.w2[o + j] * a1[j];
+      if (acc > 0) z += N.w3[k] * acc;
+    }
+    return 1 / (1 + Math.exp(-z));
+  }
+  // the move after which the opponent's chances look worst
+  function netMove(s, hand) {
+    let best = -1, move = null;
+    hand.forEach((t, w) => {
+      if (w === 1 && hand[0] === hand[1]) return;
+      const other = hand.length === 2 ? hand[1 - w] : -1;
+      const rots = s.mask === 0 ? 1 : ROTS[t];
+      for (const [x, y] of legalCells(s)) for (let r = 0; r < rots; r++) {
+        const q = 1 - netValue(put(s, t, r, x, y), other);
+        if (q > best) { best = q; move = { x, y, r, w }; }
+      }
+    });
+    return move;
+  }
+  if (root.HeredoxNetData) setNet(root.HeredoxNetData);
+
   // exactFrom: tiles left to place (single) / tiles left in the stack (two)
   const LEVELS = {
     novice: { exactFrom: 0, early: greedy, exactFrom2: -1, early2: greedy2 },
     deacon: { exactFrom: 4, early: greedy, exactFrom2: 1, early2: greedy2 },
-    abbot: { exactFrom: 6, early: lookahead, exactFrom2: 3, early2: lookahead2 },
+    abbot: { exactFrom: 6, early: lookahead, exactFrom2: 3, early2: lookahead2, net: true },   // uses the trained net when one is loaded
   };
   const solver = new Solver(), solver2 = new Solver2();
 
@@ -257,7 +327,8 @@
         if (solver2.memo.size > 400000) solver2.memo.clear();
         const b = solver2.best(s, hand).move;
         m = { x: b[0], y: b[1], r: b[2], w: b[3] };
-      } else m = L.early2(s, hand, rand);
+      } else if (L.net && NET) m = netMove(s, hand);
+      else m = L.early2(s, hand, rand);
       return [m.x + s.ox, m.y + s.oy, m.r, m.w];
     }
     const t = H.TYPES.indexOf(game.tile);
@@ -270,7 +341,7 @@
     return [m.x + s.ox, m.y + s.oy, m.r];
   }
 
-  const api = { Solver, Solver2, fromGame, place, legalCells, key, remaining, chooseMove, LEVELS };
+  const api = { Solver, Solver2, setNet, netValue, features, hasNet: () => !!NET, fromGame, place, legalCells, key, remaining, chooseMove, LEVELS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.HeredoxAI = api;
 })(typeof self !== 'undefined' ? self : this);

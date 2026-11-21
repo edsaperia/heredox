@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")"
 V=$(cat web/*.js web/index.html web/skins/*/* | sha1sum | cut -c1-10)
 rm -rf /tmp/ghp && mkdir /tmp/ghp
-cp -r web/index.html web/engine.js web/ai.js web/ui.js web/skins web/.nojekyll /tmp/ghp/
+cp -r web/index.html web/engine.js web/ai.js web/net.js web/ui.js web/skins web/.nojekyll /tmp/ghp/
 sed -i -E "s#(src|href)=\"([^\"]+\.(js|css))\"#\1=\"\2?v=$V\"#g" /tmp/ghp/index.html
 cd /tmp/ghp
 git init -q -b gh-pages

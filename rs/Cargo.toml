@@ -11,6 +11,10 @@ path = "src/replay.rs"
 name = "solve"
 path = "src/solve.rs"
 
+[[bin]]
+name = "heredox-train"
+path = "src/train.rs"
+
 [profile.release]
 opt-level = 3
 debug = false

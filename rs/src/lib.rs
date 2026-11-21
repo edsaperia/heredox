@@ -1,6 +1,9 @@
 //! Heredox engine. Mirrors py/heredox.py; see RULES.md for conventions.
 use std::collections::HashMap;
 
+pub mod pos;
+pub mod two;
+
 pub const BLANK: u8 = 0;
 pub const C: u8 = 1;
 pub const V: u8 = 2;
