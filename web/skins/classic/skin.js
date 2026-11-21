@@ -9,8 +9,38 @@
   };
   const whole = d => `<g fill="currentColor" fill-rule="evenodd"><path d="${d}"/><path transform="scale(-1,1)" d="${d}"/></g>`;
 
+
+  // Menu pictures, drawn for a 100 x 100 card in the two inks of the tiles.
+  const INK = '#17100d', PALE = '#ece9e3';
+  const card = inner => `<svg viewBox="0 0 100 100"><defs><radialGradient id="hx-parch" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ecbb5c"/><stop offset="1" stop-color="#cf8f30"/></radialGradient><clipPath id="hx-clip"><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z"/></clipPath></defs><rect width="100" height="100" rx="5" fill="#7a4a20"/><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z" fill="url(#hx-parch)"/><g clip-path="url(#hx-clip)">${inner}</g></svg>`;
+  const robe = `<path d="M12,96 C12,76 27,69 40,66 L60,66 C73,69 88,76 88,96 Z" fill="${INK}"/>`;
+  const head = `<path d="M36,45 C36,33 42,28 50,28 C58,28 64,33 64,45 C64,56 58,63 50,63 C42,63 36,56 36,45 Z" fill="${PALE}"/>`;
+  const eyes = `<circle cx="44.5" cy="46" r="1.5" fill="${INK}"/><circle cx="55.5" cy="46" r="1.5" fill="${INK}"/>`;
+  const portraits = {
+    novice: card(`${robe}<path d="M35,66 Q50,82 65,66 L61,63 Q50,74 39,63 Z" fill="${PALE}"/>${head}
+      <path d="M35.5,45 C34,34 41,31 50,31 C59,31 66,34 64.5,45 C62,38.5 57,36.5 50,36.5 C43,36.5 38,38.5 35.5,45 Z" fill="${INK}"/>
+      ${eyes}<path d="M46.5,55 Q50,57.5 53.5,55" fill="none" stroke="${INK}" stroke-width="1.3" stroke-linecap="round"/>`),
+    deacon: card(`${robe}<path d="M27,71 L37,67 L71,96 L57,96 Z" fill="${PALE}"/>
+      <path d="M46,79 h5 v-3 h3 v3 h5 v3 h-5 v6 h-3 v-6 h-5 Z" fill="${INK}" transform="rotate(40 52 82) translate(-3 2) scale(.8) translate(13 20)"/>${head}
+      <path d="M35.5,46 C32,24 68,24 64.5,46 C62,35 57,33 50,33 C43,33 38,35 35.5,46 Z" fill="${INK}"/>
+      ${eyes}<path d="M43,55 Q50,53 57,55 Q54,67 50,68 Q46,67 43,55 Z" fill="${INK}"/>`),
+    abbot: card(`${robe}<path d="M43,66 L37,96 L44,96 L48,68 Z M57,66 L63,96 L56,96 L52,68 Z" fill="${PALE}"/>
+      <path d="M79,96 V34" stroke="${INK}" stroke-width="3.2" fill="none"/><path d="M79,35 C79,20 93,22 90,32 C88.5,37 82.5,35.5 84.5,31" fill="none" stroke="${INK}" stroke-width="3.2" stroke-linecap="round"/>
+      ${head}<path d="M36,47 C36,66 44,80 50,83 C56,80 64,66 64,47 C60,56 40,56 36,47 Z" fill="${INK}"/><path d="M45,54 Q50,51.5 55,54" fill="none" stroke="${PALE}" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M35,36 C33,24 42,15 50,9 C58,15 67,24 65,36 Z" fill="${PALE}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/><path d="M50,11 V35 M36,31 H64" stroke="${INK}" stroke-width="2.4"/>
+      <path d="M41.5,43.5 L47,45 M58.5,43.5 L53,45" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>${eyes.replace(/cy="46"/g, 'cy="47.5"')}`),
+    two: card(`${robe}<path d="M35,45 C35,32 41.5,26 50,26 C58.5,26 65,32 65,45 C65,57 58.5,64 50,64 C41.5,64 35,57 35,45 Z" fill="${INK}"/>`),
+    book: card(`<path d="M9,31 L50,38 L91,31 L91,74 L50,81 L9,74 Z" fill="${INK}"/>
+      <path d="M13,27 Q33,21 50,33 L50,76 Q33,64 13,70 Z" fill="${PALE}"/><path d="M87,27 Q67,21 50,33 L50,76 Q67,64 87,70 Z" fill="${PALE}"/>
+      <path d="M50,33 V76" stroke="${INK}" stroke-width="1.2"/>
+      <g transform="translate(31,40) scale(9.5)" style="color:${INK}">${whole(HALF.V)}</g><g transform="translate(69,40) scale(11.5)" style="color:${INK}">${whole(HALF.C)}</g>
+      <g stroke="${INK}" stroke-width="1.3" stroke-linecap="round" fill="none"><path d="M20,57 Q32,53 43,60 M20,62 Q32,58 43,65 M80,57 Q68,53 57,60 M80,62 Q68,58 57,65"/></g>
+      <path d="M50,76 L47,92 L50,88 L53,92 Z" fill="${INK}"/>`),
+  };
+
   root.HeredoxSkin = {
     name: 'classic',
+    portraits,
     // unit-size drawings centred on the origin, radius about 1, using currentColor
     symbols: {
       1: { color: '#ece9e3', art: whole(HALF.C) },

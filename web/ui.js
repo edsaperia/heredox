@@ -281,19 +281,24 @@
   }
 
   // --- panels ------------------------------------------------------------
-  function openPanel(html, canClose) {
+  function openPanel(html, canClose, cls) {
+    $('panel').className = cls || '';
     body.innerHTML = html;
     closable = canClose;
     $('x').hidden = !canClose;
+    overlay.classList.toggle('solid', cls === 'menu' && !game);
     overlay.hidden = false;
   }
   function closePanel(force) {
     if (force || closable) overlay.hidden = true;
   }
   function showMenu() {
-    const lv = Object.keys(W.levels).map(k => `<button data-act="1p" data-level="${k}">${W.levels[k]}</button>`).join('');
-    openPanel(`<h2>${W.title}</h2><h3>${W.onePlayer}</h3><div>${lv}</div>
-      <div style="margin-top:1.1em"><button data-act="2p">${W.twoPlayers}</button> <button data-act="rules">${W.howToPlay}</button></div>`, !!game && !game.over);
+    const cardBtn = (act, pic, label, lv) => `<button class="card" data-act="${act}"${lv ? ` data-level="${lv}"` : ''}>${S.portraits[pic]}<span>${label}</span></button>`;
+    const lv = Object.keys(W.levels).map(k => cardBtn('1p', k, W.levels[k], k)).join('');
+    openPanel(`<h2>${W.title}</h2><div class="cards">
+      <div class="group"><h3>${W.onePlayer}</h3><div>${lv}</div></div>
+      <div class="group"><h3>&nbsp;</h3><div>${cardBtn('2p', 'two', W.twoPlayers)}${cardBtn('rules', 'book', W.howToPlay)}</div></div>
+      </div>`, !!game && !game.over, 'menu');
   }
   function showRules() {
     openPanel(`<h2>${W.howToPlay}</h2>` + W.rules.map(p => `<p>${p}</p>`).join(''), true);
