@@ -88,5 +88,28 @@ class Play(unittest.TestCase):
             self.assertEqual(replay(g.transcript()).score(), (c, v))
 
 
+class TwoInHand(unittest.TestCase):
+    def test_hands(self):
+        g = Game(FULL_DECK, variant="two")     # deck starts A A A B ...
+        self.assertEqual(g.hand, ["A", "A"])
+        g.play(0, 0, 0, 1)
+        self.assertEqual(g.hand, ["A", "A"])   # handed A, drew the third A
+        g.play(1, 0, 0, 0)
+        self.assertEqual(g.hand, ["A", "B"])   # handed A, drew B
+
+    def test_last_two_turns(self):
+        rng = random.Random(3)
+        for _ in range(200):
+            g = Game("".join(rng.sample(FULL_DECK, 16)), variant="two")
+            sizes = []
+            while not g.over:
+                sizes.append(len(g.hand))
+                g.play(*rng.choice(g.legal_moves()))
+            self.assertEqual(sizes, [2] * 15 + [1])   # the last tile is the one you are handed
+            self.assertEqual(len(g.board), 16)
+            self.assertEqual(g.hand, [])
+            self.assertEqual(replay(g.transcript()).score(), g.score())
+
+
 if __name__ == "__main__":
     unittest.main()

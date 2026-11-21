@@ -53,9 +53,12 @@ draw.
 
 - **Face-up stack:** the next tile is visible (only the next one, not the
   whole order).
-- **Two in hand:** the first player draws two, places one and hands the other
-  over. Each player then draws one, chooses which of their two to place, and
-  hands the other over.
+- **Two tiles** (playable; Edward, 2026-11-21): there are always two tiles
+  to pick from. The first player draws two. On your turn you turn and place
+  whichever you like; the other remains for your opponent, and a new tile is
+  drawn to join it. When the stack is empty the last tile is the one left
+  over. In the engines this is `variant = "two"`; a move is (x, y, r, which),
+  where `which` 0 is the tile left by the previous player and 1 the new one.
 
 ## Engine conventions
 

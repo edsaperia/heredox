@@ -12,7 +12,8 @@
   // state: {mask, cells: Array(16) of edges|null, counts[5], diff, mover}
   function fromGame(g) {
     const s = { mask: 0, cells: new Array(16).fill(null), counts: [0, 0, 0, 0, 0], diff: 0, mover: g.toMove === 'C' ? 1 : 2, ox: 0, oy: 0 };
-    for (let i = g.turn; i < 16; i++) s.counts[H.TYPES.indexOf(g.deck[i])]++;
+    // single: the tile in hand counts as the next draw; two: the stack only
+    for (let i = g.variant === 'two' ? g.pos : g.turn; i < 16; i++) s.counts[H.TYPES.indexOf(g.deck[i])]++;
     if (g.board.size) {
       const [x0, , y0] = g.bounds();
       s.ox = x0; s.oy = y0;
@@ -154,18 +155,111 @@
     return pick(top, rand);
   }
 
-  const LEVELS = {
-    novice: { exactFrom: 0, early: greedy },
-    deacon: { exactFrom: 4, early: greedy },
-    abbot: { exactFrom: 6, early: lookahead },
-  };
-  const solver = new Solver();
+  // --- two in hand --------------------------------------------------------
+  // Here s.counts is the face-down stack only. The mover holds the tile they
+  // were handed (h, or -1) and, if the stack is not empty, draws one more.
+  function put(s, t, r, x, y) {           // place a hand tile: the stack is untouched
+    const n = place(s, t, r, x, y);
+    n.counts[t]++;
+    return n;
+  }
+  class Solver2 {
+    constructor() { this.memo = new Map(); }
+    // best play holding tiles `hand` (type indices, 1 or 2 of them)
+    best(s, hand) {
+      let best = null, move = null;
+      const seen = new Set();
+      hand.forEach((t, w) => {
+        if (seen.has(t)) return;
+        seen.add(t);
+        const other = hand.length === 2 ? hand[1 - w] : -1;
+        for (const [x, y] of legalCells(s)) {
+          for (let r = 0; r < ROTS[t]; r++) {
+            const v = this.solve(put(s, t, r, x, y), other);
+            if (best === null || better(s.mover, v, best)) { best = v; move = [x, y, r, w]; }
+          }
+        }
+      });
+      return { value: best, move };
+    }
+    // value before the mover draws, holding handed tile h (-1 for none)
+    solve(s, h) {
+      const rem = remaining(s);
+      if (rem === 0 && h < 0) return s.diff > 0 ? [1, 0] : s.diff < 0 ? [0, 1] : [0, 0];
+      const kk = key(s) + '#' + h;
+      const hit = this.memo.get(kk);
+      if (hit) return hit;
+      let acc;
+      if (rem === 0) acc = this.best(s, [h]).value;
+      else {
+        acc = [0, 0];
+        for (let d = 0; d < 5; d++) {
+          if (!s.counts[d]) continue;
+          const p = s.counts[d] / rem;
+          const n = Object.assign({}, s, { counts: s.counts.slice() });
+          n.counts[d]--;
+          const v = this.best(n, h < 0 ? [d] : [h, d]).value;
+          acc[0] += p * v[0]; acc[1] += p * v[1];
+        }
+      }
+      this.memo.set(kk, acc);
+      return acc;
+    }
+  }
+  function scoredMoves2(s, hand) {
+    const out = [];
+    hand.forEach((t, w) => {
+      for (const [x, y] of legalCells(s)) for (let r = 0; r < ROTS[t]; r++) out.push({ x, y, r, w, t, g: sign(s) * gain(s, ROTATED[t][r], x, y) });
+    });
+    return out;
+  }
+  function greedy2(s, hand, rand) {
+    const ms = scoredMoves2(s, hand), top = Math.max(...ms.map(m => m.g));
+    return pick(ms.filter(m => m.g === top), rand);
+  }
+  // my gain now, less the opponent's best immediate reply with the tile I hand
+  // them plus whatever they draw
+  function lookahead2(s, hand, rand) {
+    let best = -99, top = [];
+    for (const m of scoredMoves2(s, hand)) {
+      const n = put(s, m.t, m.r, m.x, m.y), rem = remaining(n);
+      const other = hand.length === 2 ? [hand[1 - m.w]] : [];
+      let reply = 0;
+      if (rem) for (let d = 0; d < 5; d++) {
+        if (!n.counts[d]) continue;
+        reply += n.counts[d] / rem * Math.max(...scoredMoves2(n, other.concat([d])).map(q => q.g));
+      } else if (other.length) reply = Math.max(...scoredMoves2(n, other).map(q => q.g));
+      const val = m.g - reply;
+      if (val > best + 1e-9) { best = val; top = [m]; } else if (Math.abs(val - best) <= 1e-9) top.push(m);
+    }
+    return pick(top, rand);
+  }
 
-  // Choose a move [x, y, r] in game coordinates for the player to move.
+  // exactFrom: tiles left to place (single) / tiles left in the stack (two)
+  const LEVELS = {
+    novice: { exactFrom: 0, early: greedy, exactFrom2: -1, early2: greedy2 },
+    deacon: { exactFrom: 4, early: greedy, exactFrom2: 1, early2: greedy2 },
+    abbot: { exactFrom: 6, early: lookahead, exactFrom2: 3, early2: lookahead2 },
+  };
+  const solver = new Solver(), solver2 = new Solver2();
+
+  // Choose a move in game coordinates for the player to move:
+  // [x, y, r] or, with two in hand, [x, y, r, which].
   function chooseMove(game, level, rand) {
     rand = rand || Math.random;
     const L = LEVELS[level] || LEVELS.abbot;
-    const s = fromGame(game), t = H.TYPES.indexOf(game.tile);
+    const s = fromGame(game);
+    if (game.variant === 'two') {
+      const hand = game.hand.map(t => H.TYPES.indexOf(t));
+      let m;
+      if (remaining(s) <= L.exactFrom2 && s.mask) {
+        if (solver2.memo.size > 400000) solver2.memo.clear();
+        const b = solver2.best(s, hand).move;
+        m = { x: b[0], y: b[1], r: b[2], w: b[3] };
+      } else m = L.early2(s, hand, rand);
+      return [m.x + s.ox, m.y + s.oy, m.r, m.w];
+    }
+    const t = H.TYPES.indexOf(game.tile);
     let m;
     if (remaining(s) <= L.exactFrom) {
       if (solver.memo.size > 400000) solver.memo.clear();
@@ -175,7 +269,7 @@
     return [m.x + s.ox, m.y + s.oy, m.r];
   }
 
-  const api = { Solver, fromGame, place, legalCells, key, remaining, chooseMove, LEVELS };
+  const api = { Solver, Solver2, fromGame, place, legalCells, key, remaining, chooseMove, LEVELS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.HeredoxAI = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -29,16 +29,24 @@
   }
 
   class Game {
-    constructor(deck, first) {
+    // variant 'single': draw one tile, place it.
+    // variant 'two': two in hand. The first player draws two; each turn you
+    // place one tile and hand the other over, and your opponent draws one
+    // more. hand[0] is the tile you were handed, hand[1] the one you drew.
+    constructor(deck, first, variant) {
       if (deck.split('').sort().join('') !== FULL_DECK) throw new Error('deck must be the 16 tiles');
       this.deck = deck;
       this.first = first || 'C';
+      this.variant = variant || 'single';
       this.board = new Map(); // "x,y" -> {x, y, e, type, r}
       this.moves = [];
+      if (this.variant === 'two') { this.hand = [deck[0], deck[1]]; this.pos = 2; }
+      else { this.hand = [deck[0]]; this.pos = 1; }
     }
+    get stackLeft() { return 16 - this.pos; }
     get turn() { return this.moves.length; }
     get over() { return this.turn === 16; }
-    get tile() { return this.deck[this.turn]; }
+    get tile() { return this.hand[0]; }
     get toMove() {
       const other = this.first === 'C' ? 'V' : 'C';
       return this.turn % 2 === 0 ? this.first : other;
@@ -72,16 +80,26 @@
     isLegalCell(x, y) { return this.legalCells().some(c => c[0] === x && c[1] === y); }
     legalMoves() {
       if (this.over) return [];
-      const n = DISTINCT_ROTATIONS[this.tile], out = [];
-      for (const [x, y] of this.legalCells()) for (let r = 0; r < n; r++) out.push([x, y, r]);
+      const cells = this.legalCells(), out = [];
+      if (this.variant === 'single') {
+        const n = DISTINCT_ROTATIONS[this.tile];
+        for (const [x, y] of cells) for (let r = 0; r < n; r++) out.push([x, y, r]);
+        return out;
+      }
+      this.hand.forEach((t, w) => {
+        for (const [x, y] of cells) for (let r = 0; r < DISTINCT_ROTATIONS[t]; r++) out.push([x, y, r, w]);
+      });
       return out;
     }
-    play(x, y, r) {
+    play(x, y, r, which) {
+      which = which || 0;
       if (this.over) throw new Error('game over');
-      if (!this.isLegalCell(x, y) || r < 0 || r > 3) throw new Error('illegal move');
-      const type = this.tile;
+      if (!this.isLegalCell(x, y) || r < 0 || r > 3 || which >= this.hand.length) throw new Error('illegal move');
+      const type = this.hand[which];
       this.board.set(k(x, y), { x, y, e: rotate(TILES[type], r), type, r });
-      this.moves.push([x, y, r]);
+      if (this.variant === 'single') { this.moves.push([x, y, r]); this.hand = []; }
+      else { this.moves.push([x, y, r, which]); this.hand = this.hand.filter((_, i) => i !== which); }
+      if (this.pos < 16 && this.moves.length < 16) this.hand.push(this.deck[this.pos++]);
     }
     // Joins made by a tile with edges e at (x, y): [{x, y, d, sym}] for matches.
     joinsAt(x, y, e) {
@@ -107,7 +125,7 @@
       return c > v ? 'C' : v > c ? 'V' : null;
     }
     transcript() {
-      return { deck: this.deck, first: this.first, moves: this.moves.map(m => m.slice()), score: this.score() };
+      return { deck: this.deck, first: this.first, variant: this.variant, moves: this.moves.map(m => m.slice()), score: this.score() };
     }
   }
 

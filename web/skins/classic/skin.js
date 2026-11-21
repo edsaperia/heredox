@@ -64,6 +64,8 @@
       names: { C: 'Castian', V: 'Veridican' },
       levels: { novice: 'Novice', deacon: 'Deacon', abbot: 'Abbot' },
       twoPlayers: 'Two players',
+      variants: { single: 'One tile', two: 'Two tiles' },
+      rulesTwo: 'Two tiles: there are two tiles to choose from. Turn and place whichever you like; the other stays for your opponent, and a new tile joins it.',
       howToPlay: 'How to play',
       hint: 'Hint',
       menu: 'Menu',

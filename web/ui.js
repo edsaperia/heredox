@@ -8,8 +8,10 @@
 
   let L = { W: 0, H: 0, ox: 0, oy: 0, s: 0, bx: 0, by: 0, B: 0, tx: 0, ty: 0, portrait: false };
   let game = null, mode = '1p', level = 'abbot', you = 'C';
-  let pending = null;   // {rot} while a human holds the tile
-  let floatEl = null, cur = { x: 0, y: 0 }, drag = null, gen = 0, closable = false;
+  let pending = false;  // true while a human may move the tiles in hand
+  let floats = [], drag = null, gen = 0, closable = false;
+  let variant = 'single';
+  try { variant = localStorage.getItem('heredox-variant') === 'two' ? 'two' : 'single'; } catch (e) { /* no storage */ }
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const isHuman = sym => mode === '2p' || sym === you;
@@ -124,8 +126,7 @@
       }
       row.classList.toggle('turn', !!game && !game.over && game.toMove === p);
     });
-    const left = game ? 16 - game.turn - (floatEl ? 1 : 0) : 16;
-    $('left').textContent = W.tilesLeft(Math.max(0, left));
+    $('left').textContent = W.tilesLeft(game ? game.stackLeft : 16);
     let st = '';
     if (game && !game.over) {
       const p = game.toMove;
@@ -135,82 +136,94 @@
     $('b-hint').disabled = !pending;
   }
 
-  // --- the tile in hand --------------------------------------------------
-  function setFloat(p) {
-    cur = p;
-    floatEl.style.left = p.x + 'px'; floatEl.style.top = p.y + 'px';
+  // --- the tiles in hand ---------------------------------------------------
+  // floats[i] shows game.hand[i]: {el, rot, pos, slot}. With two tiles to pick
+  // from, the one not placed stays where it is for the next player.
+  function slotCentre(slot) {            // slot 0 or 1 of the tray; the single game uses the middle
+    const c = trayCentre();
+    return game && game.variant === 'two' ? { x: c.x + (slot - 0.5) * L.s * 1.06, y: c.y } : c;
   }
-  function setRot(q) {
-    floatEl.dataset.rot = q;
-    floatEl.firstChild.style.transform = `rotate(${q * 90}deg)`;
+  function setFloat(f, p) {
+    f.pos = p;
+    f.el.style.left = p.x + 'px'; f.el.style.top = p.y + 'px';
   }
-  function drawTile(mine) {
-    floatEl = tileEl(H.TILES[game.tile], 'float arrive' + (mine ? ' mine' : ''));
-    floatEl.style.transition = 'none';
-    stage.appendChild(floatEl);
-    setFloat(trayCentre());
-    setRot(0);
-    void floatEl.offsetWidth;
-    floatEl.style.transition = '';
-    if (mine) {
-      floatEl.addEventListener('pointerdown', onDown);
-      floatEl.addEventListener('pointermove', onMove);
-      floatEl.addEventListener('pointerup', onUp);
-      floatEl.addEventListener('pointercancel', onUp);
+  function setRot(f, q) {
+    f.rot = q;
+    f.el.firstChild.style.transform = `rotate(${q * 90}deg)`;
+  }
+  function dealHand(mine) {
+    // a tile left by the previous player stays exactly where and how it was
+    floats.forEach(f => { f.el.classList.toggle('mine', mine); f.el.classList.remove('arrive'); });
+    while (floats.length < game.hand.length) {
+      const i = floats.length;
+      const slot = floats.some(f => f.slot === 0) ? 1 : 0;
+      const f = { el: tileEl(H.TILES[game.hand[i]], 'float arrive' + (mine ? ' mine' : '')), rot: 0, pos: null, slot };
+      f.el.style.transition = 'none';
+      stage.appendChild(f.el);
+      setFloat(f, slotCentre(slot));
+      setRot(f, 0);
+      void f.el.offsetWidth;
+      f.el.style.transition = '';
+      f.el.addEventListener('pointerdown', ev => onDown(ev, f));
+      f.el.addEventListener('pointermove', onMove);
+      f.el.addEventListener('pointerup', onUp);
+      f.el.addEventListener('pointercancel', onUp);
+      floats.push(f);
     }
   }
   function markTarget(c) {
     inner.querySelectorAll('.slot').forEach(n => n.classList.toggle('target', !!c && n.dataset.c === c[0] + ',' + c[1]));
   }
-  function onDown(ev) {
+  function onDown(ev, f) {
     if (!pending) return;
     ev.preventDefault();
     const p = toStage(ev);
-    drag = { sx: p.x, sy: p.y, ox: cur.x, oy: cur.y, moved: false };
-    floatEl.setPointerCapture(ev.pointerId);
+    drag = { f, sx: p.x, sy: p.y, ox: f.pos.x, oy: f.pos.y, moved: false };
+    f.el.setPointerCapture(ev.pointerId);
   }
   function onMove(ev) {
     if (!drag) return;
-    const p = toStage(ev);
+    const p = toStage(ev), f = drag.f;
     if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) {
       drag.moved = true;
-      floatEl.classList.add('dragging'); stage.classList.add('dragging');
+      f.el.classList.add('dragging'); stage.classList.add('dragging');
     }
     if (drag.moved) {
-      setFloat({ x: drag.ox + p.x - drag.sx, y: drag.oy + p.y - drag.sy });
-      const c = cellAt(cur);
+      setFloat(f, { x: drag.ox + p.x - drag.sx, y: drag.oy + p.y - drag.sy });
+      const c = cellAt(f.pos);
       markTarget(game.isLegalCell(c[0], c[1]) ? c : null);
     }
   }
   function onUp() {
     if (!drag || !pending) { drag = null; return; }
-    const d = drag;
+    const d = drag, f = d.f;
     drag = null;
-    floatEl.classList.remove('dragging'); stage.classList.remove('dragging');
+    f.el.classList.remove('dragging'); stage.classList.remove('dragging');
     if (!d.moved) {            // a tap turns the tile a quarter-turn clockwise
-      pending.rot++;
-      setRot(pending.rot);
+      setRot(f, f.rot + 1);
       return;
     }
-    const c = cellAt(cur);
+    const c = cellAt(f.pos);
     if (game.isLegalCell(c[0], c[1])) {      // dropping on a legal cell ends the turn
-      commit(c[0], c[1], ((pending.rot % 4) + 4) % 4);
+      commit(c[0], c[1], ((f.rot % 4) + 4) % 4, floats.indexOf(f));
       const g = gen;
       setTimeout(() => { if (g === gen) nextTurn(); }, 600);
     } else {
-      setFloat({ x: d.ox, y: d.oy });
+      setFloat(f, { x: d.ox, y: d.oy });
       markTarget(null);
       renderSide();
     }
   }
 
   // --- turns -------------------------------------------------------------
-  function commit(x, y, r) {
-    const e = H.rotate(H.TILES[game.tile], r);
+  function commit(x, y, r, w) {
+    const e = H.rotate(H.TILES[game.hand[w]], r);
     const joins = game.joinsAt(x, y, e);
-    game.play(x, y, r);
-    if (floatEl) { floatEl.remove(); floatEl = null; }
-    pending = null;
+    game.play(x, y, r, w);
+    floats[w].el.remove();
+    floats.splice(w, 1);
+    if (game.variant === 'single') { floats.forEach(f => f.el.remove()); floats = []; }
+    pending = false;
     renderBoard();
     for (const j of joins) {
       const el = document.createElement('div');
@@ -235,9 +248,9 @@
       return;
     }
     const mine = isHuman(game.toMove);
-    drawTile(mine);
+    dealHand(mine);
     if (mine) {
-      pending = { rot: 0 };
+      pending = true;
       renderBoard();
       renderSide();
       return;
@@ -245,19 +258,22 @@
     renderSide();
     await sleep(900);
     if (g !== gen) return;
-    const [x, y, r] = AI.chooseMove(game, level);
-    for (let q = 1; q <= r; q++) {          // turn it in the tray, one quarter at a time
-      setRot(q);
+    const [x, y, r, w] = AI.chooseMove(game, level);
+    const f = floats[w || 0];
+    const turns = (((r - f.rot) % 4) + 4) % 4;
+    for (let q = 1; q <= turns; q++) {      // turn it in the tray, one quarter at a time
+      setRot(f, f.rot + 1);
       await sleep(330);
       if (g !== gen) return;
     }
     await sleep(250);
     if (g !== gen) return;
-    floatEl.style.transition = 'left .8s ease, top .8s ease';
-    setFloat(cellCentre(x, y));
+    f.el.style.transition = 'left .8s ease, top .8s ease';
+    f.el.style.zIndex = 8;
+    setFloat(f, cellCentre(x, y));
     await sleep(1050);
     if (g !== gen) return;
-    commit(x, y, r);
+    commit(x, y, r, w || 0);
     await sleep(900);
     if (g === gen) nextTurn();
   }
@@ -265,20 +281,26 @@
   function hint() {
     if (!pending) return;
     stage.querySelectorAll('.ghost').forEach(n => n.remove());
-    const [x, y, r] = AI.chooseMove(game, 'abbot');
-    const el = tileEl(H.rotate(H.TILES[game.tile], r), 'float ghost');
+    const [x, y, r, w] = AI.chooseMove(game, 'abbot');
+    const el = tileEl(H.rotate(H.TILES[game.hand[w || 0]], r), 'float ghost');
     const p = cellCentre(x, y);
     el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
     stage.appendChild(el);
     setTimeout(() => el.remove(), 2700);
+    if (floats.length > 1) {              // show which of the two tiles is meant
+      const f = floats[w || 0];
+      f.el.classList.remove('hinted'); void f.el.offsetWidth; f.el.classList.add('hinted');
+      setTimeout(() => f.el.classList.remove('hinted'), 2700);
+    }
   }
 
   function newGame(m, lv) {
     gen++;
     mode = m; if (lv) level = lv;
     stage.querySelectorAll('.float, .glow').forEach(n => n.remove());
-    floatEl = null; pending = null; drag = null;
-    game = new H.Game(H.shuffledDeck(Math.random), Math.random() < 0.5 ? 'C' : 'V');
+    floats = []; pending = false; drag = null;
+    game = new H.Game(H.shuffledDeck(Math.random), Math.random() < 0.5 ? 'C' : 'V', variant);
+    stage.classList.toggle('two', variant === 'two');
     you = Math.random() < 0.5 ? 'C' : 'V';
     closePanel(true);
     centre(); renderBoard(); renderSide();
@@ -305,10 +327,12 @@
     openPanel(`<h2>${W.title}</h2><div class="cards">
       <div class="group">${lv}</div>
       <div class="group">${cardBtn('2p', 'two', W.twoPlayers)}${cardBtn('rules', 'book', W.howToPlay)}</div>
-      </div>`, !!game && !game.over, 'menu');
+      </div>
+      <div class="switch">${Object.keys(W.variants).map(k => `<button data-act="variant" data-v="${k}" class="${k === variant ? 'on' : ''}">${W.variants[k]}</button>`).join('')}</div>`,
+      !!game && !game.over, 'menu');
   }
   function showRules() {
-    openPanel(`<h2>${W.howToPlay}</h2>` + W.rules.map(p => `<p>${p}</p>`).join(''), true);
+    openPanel(`<h2>${W.howToPlay}</h2>` + W.rules.concat(variant === 'two' ? [W.rulesTwo] : []).map(p => `<p>${p}</p>`).join(''), true);
   }
   function showEnd() {
     const w = game.winner(), sc = game.score();
@@ -323,6 +347,11 @@
     if (act === '1p') newGame('1p', b.dataset.level);
     else if (act === '2p') newGame('2p');
     else if (act === 'again') newGame(mode);
+    else if (act === 'variant') {
+      variant = b.dataset.v;
+      try { localStorage.setItem('heredox-variant', variant); } catch (e) { /* no storage */ }
+      showMenu();
+    }
     else if (act === 'menu') showMenu();
     else if (act === 'rules') { const back = !game; showRules(); if (back) rulesFromMenu = true; }
   });
@@ -347,13 +376,13 @@
   document.addEventListener('contextmenu', ev => ev.preventDefault());
   window.addEventListener('resize', () => {
     layout(); renderBoard();
-    if (floatEl) {
-      floatEl.style.transition = 'none';
-      setFloat(trayCentre());
-      void floatEl.offsetWidth; floatEl.style.transition = '';
-    }
+    floats.forEach(f => {
+      f.el.style.transition = 'none';
+      setFloat(f, slotCentre(f.slot));
+      void f.el.offsetWidth; f.el.style.transition = '';
+    });
   });
   renderSide(); layout(); showMenu();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layout(); renderBoard(); });
-  self.__heredox = { get game() { return game; }, get you() { return you; }, cellCentre, trayCentre, get L() { return L; } };
+  self.__heredox = { get game() { return game; }, get you() { return you; }, cellCentre, trayCentre, slotCentre, get L() { return L; } };
 })();
