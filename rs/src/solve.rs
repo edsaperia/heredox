@@ -234,6 +234,7 @@ impl State {
 pub enum Objective {
     WinOnly, // maximise own win probability; a draw is as bad as a loss
     ZeroSum, // win 1, draw 1/2, loss 0
+    TieFirst, // no draws: equal counts are a win for the player who moved first
 }
 
 pub struct Solver {
@@ -245,7 +246,7 @@ pub struct Solver {
 fn better(obj: Objective, a: (f64, f64), b: (f64, f64)) -> bool {
     const EPS: f64 = 1e-12;
     match obj {
-        Objective::WinOnly => a.0 > b.0 + EPS || ((a.0 - b.0).abs() <= EPS && a.1 < b.1 - EPS),
+        Objective::WinOnly | Objective::TieFirst => a.0 > b.0 + EPS || ((a.0 - b.0).abs() <= EPS && a.1 < b.1 - EPS),
         Objective::ZeroSum => a.0 - a.1 > b.0 - b.1 + EPS || (((a.0 - a.1) - (b.0 - b.1)).abs() <= EPS && a.0 > b.0 + EPS),
     }
 }
@@ -277,7 +278,7 @@ impl Solver {
     pub fn solve(&mut self, s: &State) -> (f64, f64) {
         let rem = s.remaining();
         if rem == 0 {
-            return if s.diff > 0 { (1.0, 0.0) } else if s.diff < 0 { (0.0, 1.0) } else { (0.0, 0.0) };
+            return if s.diff > 0 || (s.diff == 0 && self.obj == Objective::TieFirst) { (1.0, 0.0) } else if s.diff < 0 { (0.0, 1.0) } else { (0.0, 0.0) };
         }
         let key = if self.use_memo { s.key() } else { (0, 0) };
         if self.use_memo {
@@ -447,6 +448,54 @@ fn main() {
                 println!(
                     "{{\"mask\":{},\"cells\":[{}],\"counts\":[{},{},{},{},{}],\"diff\":{},\"pm\":{:.12},\"po\":{:.12}}}",
                     s.mask, cells.join(","), s.counts[0], s.counts[1], s.counts[2], s.counts[3], s.counts[4], s.diff, v.0, v.1
+                );
+            }
+        }
+
+        // both seats greedy until k tiles are left, then both exact, under
+        // the normal rule and under "equal counts: the first player wins"
+        "fair" => {
+            let k: u8 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(4);
+            let n: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(200);
+            for obj in [Objective::WinOnly, Objective::TieFirst] {
+                let mut rng = Rng(2024);
+                let mut sv = Solver::new(obj);
+                let mut res = [0usize; 3]; // first seat wins, level, second seat wins (by count)
+                for _ in 0..n {
+                    let mut s = State::start();
+                    for _turn in 0..16usize {
+                        let mut j = rng.below(s.remaining() as usize) as u8;
+                        let mut t = 0;
+                        while j >= s.counts[t] {
+                            j -= s.counts[t];
+                            t += 1;
+                        }
+                        let (r, x, y) = if s.remaining() <= k {
+                            sv.best_for_tile(&s, t).1
+                        } else {
+                            let mut best = Vec::new();
+                            let mut bg = -99;
+                            for (x, y) in s.legal_cells() {
+                                for r in 0..DISTINCT_ROTATIONS[t] {
+                                    let g = -(s.place(t, r, x, y).diff as i32) - s.diff as i32;
+                                    if g > bg {
+                                        bg = g;
+                                        best.clear();
+                                    }
+                                    if g == bg {
+                                        best.push((r, x, y));
+                                    }
+                                }
+                            }
+                            best[rng.below(best.len())]
+                        };
+                        s = s.place(t, r, x, y);
+                    }
+                    res[if s.diff > 0 { 0 } else if s.diff == 0 { 1 } else { 2 }] += 1;
+                }
+                println!(
+                    "{} exact from {} left: first seat ahead {}, level {}, second seat ahead {} of {}",
+                    if obj == Objective::TieFirst { "ties to first," } else { "normal rule,  " }, k, res[0], res[1], res[2], n
                 );
             }
         }
