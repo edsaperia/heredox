@@ -162,6 +162,8 @@
     if (fin) {
       const w = game.winner();
       $('result').querySelector('h2').textContent = mode === '2p' ? W.wins(W.names[w]) : w === you ? W.youWin : W.youLose;
+      const sc = game.score();
+      $('result').querySelector('p').textContent = W.summary(sc[1], sc[0], game.splits());
     }
   }
 
@@ -354,8 +356,8 @@
     if (force || closable) { overlay.hidden = true; stage.classList.remove('landing'); onDismiss = null; }
   }
   function showSide(lv) {
-    const btn = (p, note) => `<button class="card" data-act="side" data-side="${p}" data-level="${lv}">${S.portraits[p]}<span>${W.names[p]}</span><small>${note}</small></button>`;
-    openPanel(`<h2>${W.chooseSide}</h2><div class="cards"><div class="group">${btn('V', W.movesFirst)}${btn('C', W.movesSecond)}</div></div>`,
+    const btn = p => `<button class="card" data-act="side" data-side="${p}" data-level="${lv}">${S.portraits[p]}<span>${W.names[p]}</span>${W.sideNotes[p].map(n => `<small>${n}</small>`).join('')}</button>`;
+    openPanel(`<h2>${W.chooseSide}</h2><div class="cards"><div class="group">${btn('V')}${btn('C')}</div></div>`,
       false, 'menu', showMenu);
   }
   function showMenu() {
@@ -371,8 +373,8 @@
   }
   function showRules() {
     const set = H.TYPES.map(t => `<div class="kind"><div class="face">${faceSVG(H.TILES[t])}</div><span>\u00d7${H.COUNTS[t]}</span></div>`).join('');
-    openPanel(`<h2>${W.howToPlay}</h2>` + W.rules.concat(variant === 'two' ? [W.rulesTwo] : []).map(p => `<p>${p}</p>`).join('')
-      + `<div class="tileset">${set}</div>`, true, '', game ? null : showMenu);
+    openPanel(`<h2>${W.howToPlay}</h2>` + W.rules.map((p, i) => `<p${i ? '' : ' class="lore"'}>${p}</p>`).join('')
+      + `<div class="tileset">${set}</div>`, true, 'rules', game ? null : showMenu);
   }
   function showEnd() {
     ended = true;

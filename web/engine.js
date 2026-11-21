@@ -120,6 +120,17 @@
       }
       return [s[C], s[V]];
     }
+    // Joins where a Castian half meets a Veridican half: dioceses left split.
+    splits() {
+      let n = 0;
+      for (const t of this.board.values()) {
+        for (const d of [1, 2]) {
+          const o = this.at(t.x + DIRS[d][0], t.y + DIRS[d][1]);
+          if (o && t.e[d] !== BLANK && o.e[(d + 2) % 4] !== BLANK && t.e[d] !== o.e[(d + 2) % 4]) n++;
+        }
+      }
+      return n;
+    }
     // Equal counts go to the player who moved first.
     winner() {
       const [c, v] = this.score();
