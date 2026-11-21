@@ -8,7 +8,7 @@
 
   let L = { W: 0, H: 0, s: 0, bx: 0, by: 0, B: 0, tx: 0, ty: 0, portrait: false };
   let game = null, mode = '1p', level = 'abbot', you = 'C';
-  let pending = null;   // {rot, placed, x, y} while a human holds the tile
+  let pending = null;   // {rot} while a human holds the tile
   let floatEl = null, cur = { x: 0, y: 0 }, drag = null, gen = 0, closable = false;
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -103,7 +103,9 @@
     ['C', 'V'].forEach((p, i) => {
       const row = $('row-' + p), pts = row.querySelector('.pts');
       row.querySelector('.nm').textContent = W.names[p];
-      row.querySelector('.who').textContent = mode === '1p' && game && p === you ? W.you : '';
+      const who = row.querySelector('.who');
+      if (mode === '1p' && game && p !== you) { who.innerHTML = S.portraits[level]; who.classList.add('hat'); }
+      else { who.textContent = mode === '1p' && game ? W.you : ''; who.classList.remove('hat'); }
       if (pts.textContent !== String(sc[i])) {
         pts.textContent = sc[i];
         if (bump) { pts.classList.remove('bump'); void pts.offsetWidth; pts.classList.add('bump'); }
@@ -118,7 +120,6 @@
       st = mode === '2p' ? W.toMove(W.names[p]) : p === you ? W.yourMove : W.thinking(W.names[p]);
     }
     $('status').textContent = st;
-    $('b-end').disabled = !(pending && pending.placed);
     $('b-hint').disabled = !pending;
   }
 
@@ -180,15 +181,15 @@
       return;
     }
     const c = cellAt(cur);
-    if (game.isLegalCell(c[0], c[1])) {
-      pending.placed = true; pending.x = c[0]; pending.y = c[1];
-      setFloat(cellCentre(c[0], c[1]));
-      markTarget(c);
+    if (game.isLegalCell(c[0], c[1])) {      // dropping on a legal cell ends the turn
+      commit(c[0], c[1], ((pending.rot % 4) + 4) % 4);
+      const g = gen;
+      setTimeout(() => { if (g === gen) nextTurn(); }, 600);
     } else {
       setFloat({ x: d.ox, y: d.oy });
-      markTarget(pending.placed ? [pending.x, pending.y] : null);
+      markTarget(null);
+      renderSide();
     }
-    renderSide();
   }
 
   // --- turns -------------------------------------------------------------
@@ -224,7 +225,7 @@
     const mine = isHuman(game.toMove);
     drawTile(mine);
     if (mine) {
-      pending = { rot: 0, placed: false, x: 0, y: 0 };
+      pending = { rot: 0 };
       renderBoard();
       renderSide();
       return;
@@ -247,13 +248,6 @@
     commit(x, y, r);
     await sleep(900);
     if (g === gen) nextTurn();
-  }
-
-  function endTurn() {
-    if (!pending || !pending.placed) return;
-    commit(pending.x, pending.y, ((pending.rot % 4) + 4) % 4);
-    const g = gen;
-    setTimeout(() => { if (g === gen) nextTurn(); }, 600);
   }
 
   function hint() {
@@ -329,13 +323,11 @@
 
   // --- start -------------------------------------------------------------
   $('t-title').textContent = W.title;
-  $('b-end').textContent = W.endTurn;
   $('b-hint').textContent = W.hint;
   $('b-rules').textContent = W.howToPlay;
   $('b-menu').textContent = W.menu;
   $('row-C').querySelector('.ico').innerHTML = symbolSVG(1);
   $('row-V').querySelector('.ico').innerHTML = symbolSVG(2);
-  $('b-end').addEventListener('click', endTurn);
   $('b-hint').addEventListener('click', hint);
   $('b-rules').addEventListener('click', showRules);
   $('b-menu').addEventListener('click', showMenu);
@@ -344,7 +336,7 @@
     layout(); renderBoard();
     if (floatEl) {
       floatEl.style.transition = 'none';
-      setFloat(pending && pending.placed ? cellCentre(pending.x, pending.y) : trayCentre());
+      setFloat(trayCentre());
       void floatEl.offsetWidth; floatEl.style.transition = '';
     }
   });

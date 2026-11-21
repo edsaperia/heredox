@@ -63,7 +63,6 @@
       onePlayer: 'One player',
       twoPlayers: 'Two players',
       howToPlay: 'How to play',
-      endTurn: 'End turn',
       hint: 'Hint',
       menu: 'Menu',
       you: 'you',
@@ -78,7 +77,7 @@
       tilesLeft: n => (n === 1 ? '1 tile left' : `${n} tiles left`),
       rules: [
         'Players take turns placing tiles. All tiles after the first must be placed adjacent to another tile. The game ends when all tiles are laid, which must be in a four by four square. The player with the most complete copies of their symbol at the end of the game is the winner.',
-        'Drag the tile onto the board. Tap it to turn it. Press End turn when you are happy.',
+        'Tap the tile to turn it. Drag it onto the board to place it.',
       ],
     },
   };

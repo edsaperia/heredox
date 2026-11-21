@@ -19,13 +19,14 @@ const path = require('path');
     const st = await page.evaluate(() => {
       const h = self.__heredox, g = h.game;
       return { over: g.over, turn: g.turn, mine: g.toMove === h.you, float: !!document.querySelector('.float.mine'),
-        end: !document.getElementById('b-end').disabled, cells: g.legalCells(), tray: h.trayCentre(),
+        cells: g.legalCells(), tray: h.trayCentre(),
         panel: !document.getElementById('overlay').hidden };
     });
     if (st.over && st.panel) break;
-    if (st.mine && st.float && !st.end) {
+    if (st.mine && st.float) {
       const c = st.cells[myMoves % st.cells.length];
       const to = await page.evaluate(c => self.__heredox.cellCentre(c[0], c[1]), c);
+      if (myMoves === 2) { await page.click('#b-hint'); await page.waitForTimeout(600); await page.screenshot({ path: out + '/0' + (shot++) + '-hint.png' }); }
       await page.mouse.move(st.tray.x, st.tray.y);
       await page.mouse.down(); await page.mouse.up();          // tap: rotate
       await page.waitForTimeout(300);
@@ -35,10 +36,8 @@ const path = require('path');
       if (myMoves === 1) await page.screenshot({ path: out + '/0' + (shot++) + '-dragging.png' });
       await page.mouse.move(to.x, to.y, { steps: 4 });
       await page.mouse.up();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(700);
       if (myMoves === 1) await page.screenshot({ path: out + '/0' + (shot++) + '-placed.png' });
-      if (myMoves === 2) { await page.click('#b-hint'); await page.waitForTimeout(600); await page.screenshot({ path: out + '/0' + (shot++) + '-hint.png' }); }
-      await page.click('#b-end');
       myMoves++;
       if (myMoves === 5) { await page.waitForTimeout(700); await page.screenshot({ path: out + '/0' + (shot++) + '-mid.png' }); }
     }
