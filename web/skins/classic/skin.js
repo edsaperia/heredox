@@ -15,33 +15,35 @@
   const card = inner => `<svg viewBox="0 0 100 100"><defs><radialGradient id="hx-parch" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ecbb5c"/><stop offset="1" stop-color="#cf8f30"/></radialGradient><clipPath id="hx-clip"><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z"/></clipPath></defs><rect width="100" height="100" rx="5" fill="#7a4a20"/><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z" fill="url(#hx-parch)"/><g clip-path="url(#hx-clip)">${inner}</g></svg>`;
   // One family: off-white shapes, 2.4 ink outlines, 5-wide ink trim bands.
   const O = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;
+  const bare = {}, card0 = card;
+  const cardKeep = (k, inner) => { bare[k] = `<svg viewBox="0 0 100 100">${inner}</svg>`; return card0(inner); };
   const portraits = {
     // zucchetto: a plain skullcap
-    novice: card(`<g transform="translate(0,-3)"><path d="M19,68 C19,34 81,34 81,68 Q50,77 19,68 Z" fill="${PALE}" ${O}/>
+    novice: cardKeep('novice', `<g transform="translate(0,-3)"><path d="M19,68 C19,34 81,34 81,68 Q50,77 19,68 Z" fill="${PALE}" ${O}/>
       <path d="M50,43 V66 M50,43 C40,48 33,55 31,65 M50,43 C60,48 67,55 69,65" fill="none" ${O}/>
       <path d="M20.5,65 Q50,73.5 79.5,65" fill="none" stroke="${INK}" stroke-width="5"/>
       <path d="M50,43 C45,34 55,34 50,43 Z" fill="${INK}" ${O}/></g>`),
     // biretta: a square cap seen corner-on, with its three blades
-    deacon: card(`<path d="M20,46 L50,55 L80,46 L77,74 L50,84 L23,74 Z" fill="${PALE}" ${O}/>
+    deacon: cardKeep('deacon', `<path d="M20,46 L50,55 L80,46 L77,74 L50,84 L23,74 Z" fill="${PALE}" ${O}/>
       <path d="M20,46 L50,37 L80,46 L50,55 Z" fill="${PALE}" ${O}/>
       <path d="M50,46 L50,26 Q65,27 66,41.5 Z" fill="${PALE}" ${O}/>
       <path d="M50,46 L50,26 Q34,28 34,50.5 Z" fill="${PALE}" ${O}/><path d="M50,46 L50,26 Q66,28 66,50.5 Z" fill="${PALE}" ${O}/>
       <path d="M50,26 V46 M50,55 V84" fill="none" ${O}/>
       <path d="M22.5,70 L50,80 L77.5,70" fill="none" stroke="${INK}" stroke-width="5" stroke-linejoin="miter"/>`),
     // mitre, with lappets
-    abbot: card(`<path d="M36,62 L24,88 L33,91 L44,66 Z M64,62 L76,88 L67,91 L56,66 Z" fill="${INK}"/>
+    abbot: cardKeep('abbot', `<path d="M36,62 L24,88 L33,91 L44,66 Z M64,62 L76,88 L67,91 L56,66 Z" fill="${INK}"/>
       <path d="M26.5,84 L34.5,87 M73.5,84 L65.5,87" stroke="${PALE}" stroke-width="1.8"/>
       <path d="M27,68 C22,46 37,26 50,10 C63,26 78,46 73,68 Q50,73 27,68 Z" fill="${PALE}" ${O}/>
       <path d="M50,12 V70" stroke="${INK}" stroke-width="5"/><path d="M26.5,61 Q50,66 73.5,61" fill="none" stroke="${INK}" stroke-width="5"/>
       <path d="M38,40 l4,7 l-4,7 l-4,-7 Z M62,40 l4,7 l-4,7 l-4,-7 Z" fill="none" ${O}/>`),
     // a candle
-    two: card(`<path d="M25,81 H75 Q73,92 50,92 Q27,92 25,81 Z" fill="${INK}"/>
+    two: cardKeep('two', `<path d="M25,81 H75 Q73,92 50,92 Q27,92 25,81 Z" fill="${INK}"/>
       <path d="M40,46 H60 V81 H40 Z" fill="${PALE}" ${O}/>
       <path d="M40,46 Q45,50 46,58 Q47,64 49.5,58 Q51,50 60,46 Z" fill="${INK}"/>
       <path d="M50,46 V39" fill="none" ${O}/>
       <path d="M50,11 C60,25 60,34 50,39 C40,34 40,25 50,11 Z" fill="${PALE}" ${O}/>
       <path d="M50,24 C54.5,30 53.5,34 50,36 C46.5,34 45.5,30 50,24 Z" fill="${INK}"/>`),
-    book: card(`<path d="M9,32 L50,39 L91,32 L91,75 L50,82 L9,75 Z" fill="${INK}"/>
+    book: cardKeep('book', `<path d="M9,32 L50,39 L91,32 L91,75 L50,82 L9,75 Z" fill="${INK}"/>
       <path d="M13,27 Q33,21 50,33 L50,77 Q33,65 13,71 Z" fill="${PALE}" ${O}/><path d="M87,27 Q67,21 50,33 L50,77 Q67,65 87,71 Z" fill="${PALE}" ${O}/>
       <g transform="translate(31,41) scale(9.5)" style="color:${INK}">${whole(HALF.V)}</g><g transform="translate(69,41) scale(11.5)" style="color:${INK}">${whole(HALF.C)}</g>
       <path d="M20,58 Q32,54 43,61 M20,63.5 Q32,59.5 43,66.5 M80,58 Q68,54 57,61 M80,63.5 Q68,59.5 57,66.5" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>
@@ -51,6 +53,7 @@
   root.HeredoxSkin = {
     name: 'classic',
     portraits,
+    hats: bare,   // the same drawings without the card behind them
     // unit-size drawings centred on the origin, radius about 1, using currentColor
     symbols: {
       1: { color: '#ece9e3', art: whole(HALF.C) },
@@ -60,7 +63,6 @@
       title: 'Heredox',
       names: { C: 'Castian', V: 'Veridican' },
       levels: { novice: 'Novice', deacon: 'Deacon', abbot: 'Abbot' },
-      onePlayer: 'One player',
       twoPlayers: 'Two players',
       howToPlay: 'How to play',
       hint: 'Hint',

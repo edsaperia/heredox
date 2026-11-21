@@ -43,7 +43,7 @@
     stage.classList.toggle('portrait', L.portrait);
     stage.style.width = L.W + 'px'; stage.style.height = L.H + 'px';
     stage.style.fontSize = Math.max(10, L.H / 26) + 'px';
-    const side = Math.max(L.H * 0.5, Math.min(L.W * 0.3, L.H * 0.62));
+    const side = Math.max(L.H * 0.5, Math.min(L.W - L.H * 1.08, L.H * 0.74));
     $('side').style.width = side + 'px';
     L.B = Math.min(L.H, L.W - side);
     L.s = L.B / 5;
@@ -104,7 +104,7 @@
       const row = $('row-' + p), pts = row.querySelector('.pts');
       row.querySelector('.nm').textContent = W.names[p];
       const who = row.querySelector('.who');
-      if (mode === '1p' && game && p !== you) { who.innerHTML = S.portraits[level]; who.classList.add('hat'); }
+      if (mode === '1p' && game && p !== you) { who.innerHTML = S.hats[level]; who.classList.add('hat'); }
       else { who.textContent = mode === '1p' && game ? W.you : ''; who.classList.remove('hat'); }
       if (pts.textContent !== String(sc[i])) {
         pts.textContent = sc[i];
@@ -290,8 +290,8 @@
     const cardBtn = (act, pic, label, lv) => `<button class="card" data-act="${act}"${lv ? ` data-level="${lv}"` : ''}>${S.portraits[pic]}<span>${label}</span></button>`;
     const lv = Object.keys(W.levels).map(k => cardBtn('1p', k, W.levels[k], k)).join('');
     openPanel(`<h2>${W.title}</h2><div class="cards">
-      <div class="group"><h3>${W.onePlayer}</h3><div>${lv}</div></div>
-      <div class="group"><h3>&nbsp;</h3><div>${cardBtn('2p', 'two', W.twoPlayers)}${cardBtn('rules', 'book', W.howToPlay)}</div></div>
+      <div class="group">${lv}</div>
+      <div class="group">${cardBtn('2p', 'two', W.twoPlayers)}${cardBtn('rules', 'book', W.howToPlay)}</div>
       </div>`, !!game && !game.over, 'menu');
   }
   function showRules() {
