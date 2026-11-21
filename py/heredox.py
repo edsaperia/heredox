@@ -134,9 +134,10 @@ class Game:
         return s[C], s[V]
 
     def winner(self):
-        """'C', 'V' or None for a draw. Only meaningful when over."""
+        """'C' or 'V'. Equal counts go to the player who moved first.
+        Only meaningful when over."""
         c, v = self.score()
-        return "C" if c > v else "V" if v > c else None
+        return "C" if c > v else "V" if v > c else self.first
 
     # -- transcripts ------------------------------------------------------
     def transcript(self):

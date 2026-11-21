@@ -37,16 +37,16 @@ edge. Mixed joins, halves against a blank edge and halves on the outer edge
 score nothing for anyone.
 
 When all 16 tiles are down, the player with more complete copies of their own
-symbol wins. Only the final count matters; margin does not. Equal counts are a
-draw.
+symbol wins. Only the final count matters; margin does not. If the counts are
+equal, the player who moved first wins: in effect the first player starts
+half a symbol ahead. There are no draws.
 
 ## Rulings (Edward, 2026-11-21)
 
 - Rotation is free on every placement; no flipping.
 - The 4 × 4 boundary floats.
-- Draws exist, but a computer player is rewarded for winning, not for drawing.
-  Implemented as: each player maximises their own probability of winning, and
-  a draw is worth the same as a loss.
+- Equal counts go to the player who moved first (changed 13:53; before that
+  draws existed and counted as a loss for both computer players).
 - The main game is the face-down stack: you see only the tile you have drawn.
 
 ## Parked variants

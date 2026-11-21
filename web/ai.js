@@ -1,6 +1,7 @@
 // Heredox computer players: exact endgame search plus simple lookahead.
 // Positions here use real symbols (1 Castian, 2 Veridican); diff is Castian
 // minus Veridican. The value of a position is [P(Castian wins), P(Veridican wins)].
+// Equal counts are a win for the player who moved first (s.first).
 (function (root) {
   const H = typeof module !== 'undefined' && module.exports ? require('./engine.js') : root.Heredox;
   const T = H.TYPES.map(t => H.TILES[t]);
@@ -11,7 +12,7 @@
 
   // state: {mask, cells: Array(16) of edges|null, counts[5], diff, mover}
   function fromGame(g) {
-    const s = { mask: 0, cells: new Array(16).fill(null), counts: [0, 0, 0, 0, 0], diff: 0, mover: g.toMove === 'C' ? 1 : 2, ox: 0, oy: 0 };
+    const s = { mask: 0, cells: new Array(16).fill(null), counts: [0, 0, 0, 0, 0], diff: 0, mover: g.toMove === 'C' ? 1 : 2, first: g.first === 'C' ? 1 : 2, ox: 0, oy: 0 };
     // single: the tile in hand counts as the next draw; two: the stack only
     for (let i = g.variant === 'two' ? g.pos : g.turn; i < 16; i++) s.counts[H.TYPES.indexOf(g.deck[i])]++;
     if (g.board.size) {
@@ -59,7 +60,7 @@
   function place(s, t, r, x, y) {
     const e = ROTATED[t][r];
     const sx = x === -1 ? 1 : 0, sy = y === -1 ? 1 : 0;
-    const n = { mask: 0, cells: new Array(16).fill(null), counts: s.counts.slice(), diff: s.diff + gain(s, e, x, y), mover: 3 - s.mover, ox: s.ox - sx, oy: s.oy - sy };
+    const n = { mask: 0, cells: new Array(16).fill(null), counts: s.counts.slice(), diff: s.diff + gain(s, e, x, y), mover: 3 - s.mover, first: s.first, ox: s.ox - sx, oy: s.oy - sy };
     if (sx || sy) {
       for (let i = 0; i < 16; i++) if (s.mask >> i & 1) {
         const j = ((i >> 2) + sy) * 4 + i % 4 + sx;
@@ -84,7 +85,7 @@
         edges += open ? s.cells[i][d] : 0;
       }
     }
-    return s.mask + '|' + edges + '|' + s.counts.join('') + '|' + s.diff + '|' + s.mover;
+    return s.mask + '|' + edges + '|' + s.counts.join('') + '|' + s.diff + '|' + s.mover + s.first;
   }
   const remaining = s => s.counts[0] + s.counts[1] + s.counts[2] + s.counts[3] + s.counts[4];
   const EPS = 1e-12;
@@ -109,7 +110,7 @@
     }
     solve(s) {
       const rem = remaining(s);
-      if (rem === 0) return s.diff > 0 ? [1, 0] : s.diff < 0 ? [0, 1] : [0, 0];
+      if (rem === 0) return s.diff > 0 || (s.diff === 0 && s.first === 1) ? [1, 0] : [0, 1];
       const kk = key(s);
       const hit = this.memo.get(kk);
       if (hit) return hit;
@@ -185,7 +186,7 @@
     // value before the mover draws, holding handed tile h (-1 for none)
     solve(s, h) {
       const rem = remaining(s);
-      if (rem === 0 && h < 0) return s.diff > 0 ? [1, 0] : s.diff < 0 ? [0, 1] : [0, 0];
+      if (rem === 0 && h < 0) return s.diff > 0 || (s.diff === 0 && s.first === 1) ? [1, 0] : [0, 1];
       const kk = key(s) + '#' + h;
       const hit = this.memo.get(kk);
       if (hit) return hit;

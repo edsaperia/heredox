@@ -7,7 +7,7 @@ const rand = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967
 
 // plain search with no memo, written separately from Solver2
 function brute(g) {
-  if (g.over) { const w = g.winner(); return w === 'C' ? [1, 0] : w === 'V' ? [0, 1] : [0, 0]; }
+  if (g.over) return g.winner() === 'C' ? [1, 0] : [0, 1];
   // the mover's hand is known; what they hand over is known; the next draw is the next deck tile,
   // so average over every order of the remaining stack by averaging over which stack tile comes next
   const me = g.toMove === 'C' ? 0 : 1;
@@ -65,8 +65,8 @@ for (const [a, b] of [['novice', 'novice'], ['deacon', 'novice'], ['abbot', 'nov
       slow = Math.max(slow, Date.now() - t1);
     }
     const w = g.winner();
-    r[w === null ? 1 : w === aSym ? 0 : 2]++;
-    seat[w === null ? 1 : w === g.first ? 0 : 2]++;
+    r[w === aSym ? 0 : 2]++;
+    seat[w === g.first ? 0 : 2]++;
   }
   console.log(`${a} v ${b}: ${r[0]} wins, ${r[1]} draws, ${r[2]} losses; first seat won ${seat[0]}, second ${seat[2]}; slowest move ${slow} ms`);
 }

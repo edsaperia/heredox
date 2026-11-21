@@ -8,7 +8,7 @@ const t0 = Date.now();
 for (const line of fs.readFileSync(__dirname + '/solver_positions.jsonl', 'utf8').split('\n')) {
   if (!line.trim()) continue;
   const p = JSON.parse(line);
-  const s = { mask: p.mask, cells: p.cells, counts: p.counts, diff: p.diff, mover: 1, ox: 0, oy: 0 };
+  const s = { mask: p.mask, cells: p.cells, counts: p.counts, diff: p.diff, mover: 1, first: p.counts.reduce((a, b) => a + b, 0) % 2 === 0 ? 1 : 2, ox: 0, oy: 0 };
   const v = new AI.Solver().solve(s);
   worst = Math.max(worst, Math.abs(v[0] - p.pm), Math.abs(v[1] - p.po));
   n++;
@@ -31,7 +31,7 @@ for (const [a, b] of [['novice', 'novice'], ['deacon', 'novice'], ['abbot', 'nov
       slow = Math.max(slow, Date.now() - t1);
     }
     const w = g.winner();
-    r[w === null ? 1 : w === aSym ? 0 : 2]++;
+    r[w === aSym ? 0 : 2]++;
   }
   console.log(`${a} v ${b}: ${r[0]} wins, ${r[1]} draws, ${r[2]} losses; slowest move ${slow} ms`);
 }

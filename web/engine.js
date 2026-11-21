@@ -120,9 +120,10 @@
       }
       return [s[C], s[V]];
     }
+    // Equal counts go to the player who moved first.
     winner() {
       const [c, v] = this.score();
-      return c > v ? 'C' : v > c ? 'V' : null;
+      return c > v ? 'C' : v > c ? 'V' : this.first;
     }
     transcript() {
       return { deck: this.deck, first: this.first, variant: this.variant, moves: this.moves.map(m => m.slice()), score: this.score() };

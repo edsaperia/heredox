@@ -112,16 +112,21 @@
       }
     }
   }
+  // a player's count as shown: the first player starts half a symbol ahead
+  function shown(p) {
+    if (!game) return '0';
+    const n = game.score()[p === 'C' ? 0 : 1];
+    return p === game.first ? (n ? n + '\u00bd' : '\u00bd') : String(n);
+  }
   function renderSide(bump) {
-    const sc = game ? game.score() : [0, 0];
     ['C', 'V'].forEach((p, i) => {
       const row = $('row-' + p), pts = row.querySelector('.pts');
       row.querySelector('.nm').textContent = W.names[p];
       const who = row.querySelector('.who');
       if (mode === '1p' && game && p !== you) { who.innerHTML = S.hats[level]; who.classList.add('hat'); }
       else { who.textContent = mode === '1p' && game ? W.you : ''; who.classList.remove('hat'); }
-      if (pts.textContent !== String(sc[i])) {
-        pts.textContent = sc[i];
+      if (pts.textContent !== shown(p)) {
+        pts.textContent = shown(p);
         if (bump) { pts.classList.remove('bump'); void pts.offsetWidth; pts.classList.add('bump'); }
       }
       row.classList.toggle('turn', !!game && !game.over && game.toMove === p);
@@ -332,12 +337,14 @@
       !!game && !game.over, 'menu');
   }
   function showRules() {
-    openPanel(`<h2>${W.howToPlay}</h2>` + W.rules.concat(variant === 'two' ? [W.rulesTwo] : []).map(p => `<p>${p}</p>`).join(''), true);
+    const set = H.TYPES.map(t => `<div class="kind"><div class="face">${faceSVG(H.TILES[t])}</div><span>\u00d7${H.COUNTS[t]}</span></div>`).join('');
+    openPanel(`<h2>${W.howToPlay}</h2>` + W.rules.concat(variant === 'two' ? [W.rulesTwo] : []).map(p => `<p>${p}</p>`).join('')
+      + `<div class="tileset">${set}</div>`, true);
   }
   function showEnd() {
-    const w = game.winner(), sc = game.score();
-    const head = w === null ? W.draw : mode === '2p' ? W.wins(W.names[w]) : w === you ? W.youWin : W.youLose;
-    openPanel(`<h2>${head}</h2><p>${W.names.C} ${sc[0]} · ${W.names.V} ${sc[1]}</p>
+    const w = game.winner();
+    const head = mode === '2p' ? W.wins(W.names[w]) : w === you ? W.youWin : W.youLose;
+    openPanel(`<h2>${head}</h2><p>${W.names.C} ${shown('C')} · ${W.names.V} ${shown('V')}</p>
       <div><button class="big" data-act="again">${W.playAgain}</button> <button class="big" data-act="menu">${W.menu}</button></div>`, true);
   }
   body.addEventListener('click', ev => {

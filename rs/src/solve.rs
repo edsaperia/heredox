@@ -431,7 +431,7 @@ fn main() {
             let left: u8 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(4);
             let n: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(100);
             let mut rng = Rng(424242 + left as u64);
-            let mut sv = Solver::new(Objective::WinOnly);
+            let mut sv = Solver::new(Objective::TieFirst);
             for _ in 0..n {
                 let s = random_position(&mut rng, left);
                 let v = sv.solve(&s);

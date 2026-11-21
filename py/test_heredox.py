@@ -69,6 +69,12 @@ class Play(unittest.TestCase):
         g2.play(1, 0, 3)           # rotated 3: (V, -, -, C): left edge C, mixed
         self.assertEqual(g2.score(), (0, 0))
 
+    def test_level_scores_go_to_first_player(self):
+        g = Game(FULL_DECK, first="V")
+        g.play(0, 0, 0)
+        self.assertEqual(g.score(), (0, 0))
+        self.assertEqual(g.winner(), "V")
+
     def test_turn_order(self):
         g = Game(FULL_DECK, first="V")
         self.assertEqual(g.to_move, "V")
