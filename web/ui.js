@@ -293,10 +293,11 @@
     closable = canClose;
     $('x').hidden = !canClose;
     overlay.classList.toggle('solid', cls === 'menu' && !game);
+    stage.classList.toggle('landing', !game);
     overlay.hidden = false;
   }
   function closePanel(force) {
-    if (force || closable) overlay.hidden = true;
+    if (force || closable) { overlay.hidden = true; stage.classList.remove('landing'); }
   }
   function showMenu() {
     const cardBtn = (act, pic, label, lv) => `<button class="card" data-act="${act}"${lv ? ` data-level="${lv}"` : ''}>${S.portraits[pic]}<span>${label}</span></button>`;
