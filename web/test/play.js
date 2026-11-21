@@ -6,7 +6,9 @@ const path = require('path');
   const out = process.argv[2] || '/tmp/shots';
   require('fs').mkdirSync(out, { recursive: true });
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
-  const page = await browser.newPage({ viewport: { width: 844, height: 390 }, hasTouch: true });
+  const desktop = !!process.env.DESKTOP;
+  const page = await browser.newPage(desktop ? { viewport: { width: 1440, height: 900 } } : { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  const off = () => page.evaluate(() => ({ x: self.__heredox.L.ox, y: self.__heredox.L.oy }));
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
@@ -26,6 +28,7 @@ const path = require('path');
     if (st.mine && st.float) {
       const c = st.cells[myMoves % st.cells.length];
       const to = await page.evaluate(c => self.__heredox.cellCentre(c[0], c[1]), c);
+      const o = await off(); to.x += o.x; to.y += o.y; st.tray.x += o.x; st.tray.y += o.y;
       if (myMoves === 2) { await page.click('#b-hint'); await page.waitForTimeout(600); await page.screenshot({ path: out + '/0' + (shot++) + '-hint.png' }); }
       await page.mouse.move(st.tray.x, st.tray.y);
       await page.mouse.down(); await page.mouse.up();          // tap: rotate
@@ -49,7 +52,7 @@ const path = require('path');
   await page.click('#x');
   await page.screenshot({ path: out + '/0' + (shot++) + '-final-board.png' });
   // portrait: the stage should turn to landscape
-  await page.setViewportSize({ width: 500, height: 900 });
+  await page.setViewportSize(desktop ? { width: 700, height: 1000 } : { width: 500, height: 900 });
   await page.waitForTimeout(400);
   await page.screenshot({ path: out + '/0' + (shot++) + '-portrait.png' });
   console.log(JSON.stringify({ fin, myMoves, errors }));

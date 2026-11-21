@@ -6,7 +6,7 @@
   const MIDS = [[50, 0], [100, 50], [50, 100], [0, 50]];
   const SYM = { C: 1, V: 2 };
 
-  let L = { W: 0, H: 0, s: 0, bx: 0, by: 0, B: 0, tx: 0, ty: 0, portrait: false };
+  let L = { W: 0, H: 0, ox: 0, oy: 0, s: 0, bx: 0, by: 0, B: 0, tx: 0, ty: 0, portrait: false };
   let game = null, mode = '1p', level = 'abbot', you = 'C';
   let pending = null;   // {rot} while a human holds the tile
   let floatEl = null, cur = { x: 0, y: 0 }, drag = null, gen = 0, closable = false;
@@ -38,9 +38,20 @@
   // --- layout ------------------------------------------------------------
   function layout() {
     const vw = window.innerWidth, vh = window.innerHeight;
-    L.portrait = vh > vw;
-    L.W = Math.max(vw, vh); L.H = Math.min(vw, vh);
+    if (window.matchMedia('(pointer: coarse)').matches) {
+      // phones and tablets: fill the screen, always landscape
+      L.portrait = vh > vw;
+      L.W = Math.max(vw, vh); L.H = Math.min(vw, vh);
+      L.ox = 0; L.oy = 0;
+    } else {
+      // desktop: never turn the page; a fixed-shape table centred in the window
+      L.portrait = false;
+      L.H = Math.min(vh, 820, vw / 1.6);
+      L.W = Math.min(vw, L.H * 1.7);
+      L.ox = (vw - L.W) / 2; L.oy = (vh - L.H) / 2;
+    }
     stage.classList.toggle('portrait', L.portrait);
+    stage.style.left = L.ox + 'px'; stage.style.top = L.oy + 'px';
     stage.style.width = L.W + 'px'; stage.style.height = L.H + 'px';
     stage.style.fontSize = Math.max(10, L.H / 26) + 'px';
     const side = Math.max(L.H * 0.5, Math.min(L.W - L.H * 1.08, L.H * 0.74));
@@ -54,7 +65,8 @@
     // shrink the side panel's text until every button fits
     const sideEl = $('side');
     let f = Math.max(10, L.H / 26);
-    while (sideEl.scrollHeight > L.H + 0.5 && f > 6) {
+    const names = [...sideEl.querySelectorAll('.nm')];
+    while ((sideEl.scrollHeight > L.H + 0.5 || names.some(n => n.scrollWidth > n.clientWidth)) && f > 6) {
       f -= 0.5;
       stage.style.fontSize = f + 'px';
     }
@@ -77,7 +89,7 @@
     return { x, y };
   }
   function toStage(ev) {
-    return L.portrait ? { x: ev.clientY, y: window.innerWidth - ev.clientX } : { x: ev.clientX, y: ev.clientY };
+    return L.portrait ? { x: ev.clientY, y: window.innerWidth - ev.clientX } : { x: ev.clientX - L.ox, y: ev.clientY - L.oy };
   }
 
   function renderBoard() {
@@ -340,7 +352,7 @@
       void floatEl.offsetWidth; floatEl.style.transition = '';
     }
   });
-  layout(); renderSide(); showMenu();
+  renderSide(); layout(); showMenu();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layout(); renderBoard(); });
   self.__heredox = { get game() { return game; }, get you() { return you; }, cellCentre, trayCentre, get L() { return L; } };
 })();
