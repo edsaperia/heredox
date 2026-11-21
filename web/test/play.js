@@ -16,15 +16,18 @@ const path = require('path');
   await page.waitForTimeout(800);
   await page.screenshot({ path: out + '/01-menu.png' });
   await page.click('button[data-level="abbot"]');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: out + '/01b-side.png' });
+  await page.click(`button[data-side="${process.env.SIDE || 'C'}"]`);
   let shot = 2, myMoves = 0;
   for (let i = 0; i < 400; i++) {
     const st = await page.evaluate(() => {
       const h = self.__heredox, g = h.game;
       return { over: g.over, turn: g.turn, mine: g.toMove === h.you, float: !!document.querySelector('.float.mine'), 
         cells: g.legalCells(), tray: (() => { const f = [...document.querySelectorAll('.float.mine')].pop(); return f ? { x: parseFloat(f.style.left), y: parseFloat(f.style.top) } : null; })(),
-        panel: !document.getElementById('overlay').hidden };
+        ended: !document.getElementById('result').hidden };
     });
-    if (st.over && st.panel) break;
+    if (st.over && st.ended) break;
     if (st.mine && st.float) {
       const c = st.cells[myMoves % st.cells.length];
       const to = await page.evaluate(c => self.__heredox.cellCentre(c[0], c[1]), c);
@@ -49,8 +52,6 @@ const path = require('path');
   await page.waitForTimeout(500);
   await page.screenshot({ path: out + '/0' + (shot++) + '-end.png' });
   const fin = await page.evaluate(() => ({ over: self.__heredox.game.over, score: self.__heredox.game.score(), tiles: document.querySelectorAll('#inner .tile').length }));
-  await page.click('#x');
-  await page.screenshot({ path: out + '/0' + (shot++) + '-final-board.png' });
   // portrait: the stage should turn to landscape
   await page.setViewportSize(desktop ? { width: 700, height: 1000 } : { width: 500, height: 900 });
   await page.waitForTimeout(400);

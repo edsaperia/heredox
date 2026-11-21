@@ -50,14 +50,18 @@
       <path d="M50,77 L46.5,93 L50,89 L53.5,93 Z" fill="${INK}"/>`),
   };
 
+  // the two sides, as cards for the choosing screen
+  portraits.C = card(`<g transform="translate(50,50) scale(40)" style="color:${PALE}">${whole(HALF.C)}</g>`);
+  portraits.V = card(`<g transform="translate(50,50) scale(34)" style="color:${INK}">${whole(HALF.V)}</g>`);
+
   root.HeredoxSkin = {
     name: 'classic',
     portraits,
     hats: bare,   // the same drawings without the card behind them
     // unit-size drawings centred on the origin, radius about 1, using currentColor
     symbols: {
-      1: { color: '#ece9e3', art: whole(HALF.C) },
-      2: { color: '#17100d', art: whole(HALF.V) },
+      1: { color: '#ece9e3', glow: '#fff3b0', art: whole(HALF.C) },
+      2: { color: '#17100d', glow: '#ff5a1f', art: whole(HALF.V) },
     },
     words: {
       title: 'Heredox',
@@ -77,6 +81,9 @@
       youLose: 'You lose',
       wins: n => `${n} wins`,
       playAgain: 'Play again',
+      chooseSide: 'Choose your side',
+      movesFirst: 'moves first',
+      movesSecond: 'moves second',
       tilesLeft: n => (n === 1 ? '1 tile left' : `${n} tiles left`),
       rules: [
         'Players take turns placing tiles. All tiles after the first must be placed adjacent to another tile. The game ends when all tiles are laid, which must be in a four by four square. The player with the most complete copies of their symbol at the end of the game is the winner.',

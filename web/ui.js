@@ -9,7 +9,7 @@
   let L = { W: 0, H: 0, ox: 0, oy: 0, s: 0, bx: 0, by: 0, B: 0, tx: 0, ty: 0, portrait: false };
   let game = null, mode = '1p', level = 'abbot', you = 'C';
   let pending = false;  // true while a human may move the tiles in hand
-  let floats = [], drag = null, gen = 0, closable = false;
+  let floats = [], drag = null, gen = 0, closable = false, ended = false, onDismiss = null;
   // Two tiles is the main game. The one-tile game still works ('single') but
   // its menu switch is commented out for now.
   let variant = 'two';
@@ -22,19 +22,26 @@
     const s = S.symbols[sym];
     return `<svg viewBox="-1.2 -1.2 2.4 2.4" style="color:${s.color}">${s.art}</svg>`;
   }
-  function faceSVG(e) {
-    let g = '';
+  // lit: for each edge, whether its half is part of a completed symbol
+  function faceSVG(e, lit) {
+    let g = '', defs = '';
     for (let d = 0; d < 4; d++) {
       if (!e[d]) continue;
       const s = S.symbols[e[d]];
-      g += `<g transform="translate(${MIDS[d][0]},${MIDS[d][1]}) scale(31)" style="color:${s.color}">${s.art}</g>`;
+      const half = `<g transform="translate(${MIDS[d][0]},${MIDS[d][1]}) scale(31)" style="color:${s.color}">${s.art}</g>`;
+      g += lit && lit[d] ? `<g filter="url(#hx-glow${e[d]})">${half}</g>` : half;
     }
-    return `<svg viewBox="0 0 100 100">${g}</svg>`;
+    if (lit && lit.some(Boolean)) {
+      defs = '<defs>' + [1, 2].map(k => `<filter id="hx-glow${k}" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="3.2" result="b"/><feFlood flood-color="${S.symbols[k].glow}"/><feComposite in2="b" operator="in" result="c"/>
+        <feMerge><feMergeNode in="c"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`).join('') + '</defs>';
+    }
+    return `<svg viewBox="0 0 100 100">${defs}${g}</svg>`;
   }
-  function tileEl(e, cls) {
+  function tileEl(e, cls, lit) {
     const el = document.createElement('div');
     el.className = 'tile ' + (cls || '');
-    el.innerHTML = `<div class="face">${faceSVG(e)}</div>`;
+    el.innerHTML = `<div class="face">${faceSVG(e, lit)}</div>`;
     return el;
   }
 
@@ -99,7 +106,11 @@
     inner.querySelectorAll('.tile, .slot').forEach(n => n.remove());
     if (!game) return;
     for (const t of game.board.values()) {
-      const el = tileEl(t.e);
+      const lit = [0, 1, 2, 3].map(d => {
+        const n = game.at(t.x + H.DIRS[d][0], t.y + H.DIRS[d][1]);
+        return !!n && t.e[d] !== 0 && t.e[d] === n.e[(d + 2) % 4];
+      });
+      const el = tileEl(t.e, '', lit);
       el.style.left = t.x * L.s + 'px'; el.style.top = t.y * L.s + 'px';
       inner.appendChild(el);
     }
@@ -140,6 +151,14 @@
     }
     $('status').textContent = st;
     $('b-hint').disabled = !pending;
+    // when the game is over the result takes the tray's place, beside the finished floor
+    const fin = !!game && game.over && ended;
+    $('result').hidden = !fin;
+    $('tray').hidden = $('left').hidden = $('status').hidden = fin;
+    if (fin) {
+      const w = game.winner();
+      $('result').querySelector('h2').textContent = mode === '2p' ? W.wins(W.names[w]) : w === you ? W.youWin : W.youLose;
+    }
   }
 
   // --- the tiles in hand ---------------------------------------------------
@@ -300,14 +319,15 @@
     }
   }
 
-  function newGame(m, lv) {
+  // side: 'C' or 'V' for the human in a one-player game; omitted to keep the last choice
+  function newGame(m, lv, side) {
     gen++;
     mode = m; if (lv) level = lv;
+    if (side) you = side;
     stage.querySelectorAll('.float, .glow').forEach(n => n.remove());
-    floats = []; pending = false; drag = null;
+    floats = []; pending = false; drag = null; ended = false;
     game = new H.Game(H.shuffledDeck(Math.random), 'V', variant);   // Veridican always moves first
     stage.classList.toggle('two', variant === 'two');
-    you = Math.random() < 0.5 ? 'C' : 'V';
     closePanel(true);
     centre(); renderBoard(); renderSide();
     const g = gen;
@@ -315,17 +335,24 @@
   }
 
   // --- panels ------------------------------------------------------------
-  function openPanel(html, canClose, cls) {
+  // back: where the × leads instead of simply closing
+  function openPanel(html, canClose, cls, back) {
     $('panel').className = cls || '';
     body.innerHTML = html;
     closable = canClose;
-    $('x').hidden = !canClose;
+    onDismiss = back || null;
+    $('x').hidden = !canClose && !back;
     overlay.classList.toggle('solid', cls === 'menu' && !game);
     stage.classList.toggle('landing', !game);
     overlay.hidden = false;
   }
   function closePanel(force) {
-    if (force || closable) { overlay.hidden = true; stage.classList.remove('landing'); }
+    if (force || closable) { overlay.hidden = true; stage.classList.remove('landing'); onDismiss = null; }
+  }
+  function showSide(lv) {
+    const btn = (p, note) => `<button class="card" data-act="side" data-side="${p}" data-level="${lv}">${S.portraits[p]}<span>${W.names[p]}</span><small>${note}</small></button>`;
+    openPanel(`<h2>${W.chooseSide}</h2><div class="cards"><div class="group">${btn('V', W.movesFirst)}${btn('C', W.movesSecond)}</div></div>`,
+      false, 'menu', showMenu);
   }
   function showMenu() {
     const cardBtn = (act, pic, label, lv) => `<button class="card" data-act="${act}"${lv ? ` data-level="${lv}"` : ''}>${S.portraits[pic]}<span>${label}</span></button>`;
@@ -341,32 +368,28 @@
   function showRules() {
     const set = H.TYPES.map(t => `<div class="kind"><div class="face">${faceSVG(H.TILES[t])}</div><span>\u00d7${H.COUNTS[t]}</span></div>`).join('');
     openPanel(`<h2>${W.howToPlay}</h2>` + W.rules.concat(variant === 'two' ? [W.rulesTwo] : []).map(p => `<p>${p}</p>`).join('')
-      + `<div class="tileset">${set}</div>`, true);
+      + `<div class="tileset">${set}</div>`, true, '', game ? null : showMenu);
   }
   function showEnd() {
-    const w = game.winner();
-    const head = mode === '2p' ? W.wins(W.names[w]) : w === you ? W.youWin : W.youLose;
-    openPanel(`<h2>${head}</h2><p>${W.names.C} ${shown('C')} · ${W.names.V} ${shown('V')}</p>
-      <div><button class="big" data-act="again">${W.playAgain}</button> <button class="big" data-act="menu">${W.menu}</button></div>`, true);
+    ended = true;
+    renderSide();
   }
   body.addEventListener('click', ev => {
     const b = ev.target.closest('button');
     if (!b) return;
     const act = b.dataset.act;
-    if (act === '1p') newGame('1p', b.dataset.level);
+    if (act === '1p') showSide(b.dataset.level);
+    else if (act === 'side') newGame('1p', b.dataset.level, b.dataset.side);
     else if (act === '2p') newGame('2p');
-    else if (act === 'again') newGame(mode);
     else if (act === 'variant') { variant = b.dataset.v; showMenu(); }
-    else if (act === 'menu') showMenu();
-    else if (act === 'rules') { const back = !game; showRules(); if (back) rulesFromMenu = true; }
+    else if (act === 'rules') showRules();
   });
-  let rulesFromMenu = false;
   function dismiss() {
-    if (rulesFromMenu) { rulesFromMenu = false; showMenu(); return; }
+    if (onDismiss) { const f = onDismiss; onDismiss = null; f(); return; }
     closePanel();
   }
   $('x').addEventListener('click', dismiss);
-  overlay.addEventListener('pointerdown', ev => { if (ev.target === overlay && (closable || rulesFromMenu)) dismiss(); });
+  overlay.addEventListener('pointerdown', ev => { if (ev.target === overlay && (closable || onDismiss)) dismiss(); });
 
   // --- start -------------------------------------------------------------
   $('t-title').textContent = W.title;
@@ -378,6 +401,8 @@
   $('b-hint').addEventListener('click', hint);
   $('b-rules').addEventListener('click', showRules);
   $('b-menu').addEventListener('click', showMenu);
+  $('b-again').textContent = W.playAgain;
+  $('b-again').addEventListener('click', () => newGame(mode));
   document.addEventListener('contextmenu', ev => ev.preventDefault());
   // iOS Safari zooms on a double tap whatever the page asks for, and tapping a
   // tile twice to turn it twice is a double tap. Cancel the second tap's

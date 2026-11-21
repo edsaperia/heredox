@@ -59,6 +59,10 @@
   #stage.two #tray { width: calc(var(--s) * 2.18); }
   .float.hinted .face { animation: hinted 2.6s ease; }
   @keyframes hinted { 15%, 80% { box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accent); } }
+  #result { display: flex; flex-direction: column; align-items: center; gap: .7em; }
+  #result[hidden], #tray[hidden], #left[hidden], #status[hidden] { display: none; }
+  #result h2 { font-family: var(--font-display); font-weight: normal; font-size: 2.2em; line-height: 1; margin: 0; }
+  #b-again { background: var(--accent); color: var(--panel-ink); border-color: var(--accent); padding: .45em 1.2em; }
   #left { font-size: .9em; line-height: 1.2; color: var(--ink-dim); }
   #buttons { display: grid; grid-template-columns: 1fr 1fr; gap: .5em; }
   button { font: inherit; color: var(--ink); background: rgba(255,255,255,.07); border: 1px solid var(--ink-dim); border-radius: .4em;
@@ -81,13 +85,14 @@
   #panel p { font-size: 1.15em; line-height: 1.3; margin: .4em 0; max-width: 38em; }
   #panel button { color: var(--panel-ink); border-color: var(--panel-ink); background: rgba(0,0,0,.06); margin: .2em; min-width: 6.5em; }
   #panel .big { font-size: 1.3em; }
-  #panel.menu { background: none; box-shadow: none; color: var(--ink); max-width: 96%; padding: .6em 1.5em 1em; }
+  #panel.menu { background: none; box-shadow: none; color: var(--ink); max-width: 96%; min-width: 72%; padding: .6em 1.5em 1em; }
   #panel.menu h2 { font-size: 3.6em; margin-bottom: .25em; }
   #panel.menu #x { color: var(--ink); }
   .cards { display: flex; justify-content: center; gap: 2.2em; }
   .group { display: flex; gap: .9em; }
   #panel button.card { display: flex; flex-direction: column; align-items: center; gap: .35em; background: none; border: none; padding: 0; margin: 0;
     min-width: 0; color: var(--ink); font-size: 1.2em; width: 5.6em; }
+  .card small { font-size: .7em; font-style: italic; color: var(--ink-dim); margin-top: -.3em; }
   .card svg { width: 100%; display: block; border-radius: 6%; box-shadow: 0 3px 10px rgba(0,0,0,.6); transition: transform .15s; }
   .card:active svg { transform: scale(.95); }
   .switch { margin-top: 1.3em; display: inline-flex; border: 1px solid var(--ink-dim); border-radius: .5em; overflow: hidden; }
@@ -111,7 +116,7 @@
       <div class="row" id="row-C"><span class="ico"></span><span class="nm"></span><span class="who"></span><span class="pts">0</span></div>
       <div class="row" id="row-V"><span class="ico"></span><span class="nm"></span><span class="who"></span><span class="pts">0</span></div>
     </div>
-    <div id="draw"><div id="status"></div><div id="tray"></div><div id="left"></div></div>
+    <div id="draw"><div id="status"></div><div id="tray"></div><div id="left"></div><div id="result" hidden><h2></h2><button id="b-again"></button></div></div>
     <div id="buttons">
       <button id="b-hint"></button>
       <button id="b-rules"></button>
