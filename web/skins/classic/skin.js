@@ -15,16 +15,15 @@
   const card = inner => `<svg viewBox="0 0 100 100"><defs><radialGradient id="hx-parch" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ecbb5c"/><stop offset="1" stop-color="#cf8f30"/></radialGradient><clipPath id="hx-clip"><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z"/></clipPath></defs><rect width="100" height="100" rx="5" fill="#7a4a20"/><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z" fill="url(#hx-parch)"/><g clip-path="url(#hx-clip)">${inner}</g></svg>`;
   const portraits = {
     // zucchetto: a plain skullcap
-    novice: card(`<path d="M20,68 C20,36 80,36 80,68 Q50,76 20,68 Z" fill="${INK}"/>
-      <path d="M50,44 C40,50 33,58 31,70 M50,44 C60,50 67,58 69,70 M50,44 V73" fill="none" stroke="${PALE}" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M20.5,66 Q50,74.5 79.5,66" fill="none" stroke="${PALE}" stroke-width="1.8"/>
-      <path d="M50,44 C46,36 54,36 50,44" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`),
+    novice: card(`<path d="M20,68 C20,36 80,36 80,68 Q50,76 20,68 Z" fill="${PALE}"/>
+      <path d="M50,44 C40,50 33,58 31,70 M50,44 C60,50 67,58 69,70 M50,44 V73" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M20.5,66 Q50,74.5 79.5,66" fill="none" stroke="${INK}" stroke-width="1.8"/>
+      <path d="M50,44 C46,36 54,36 50,44" fill="none" stroke="${PALE}" stroke-width="2.6" stroke-linecap="round"/>`),
     // biretta: square cap with three ridges and a tuft
-    deacon: card(`<path d="M22,74 L27,47 L73,47 L78,74 Q50,80 22,74 Z" fill="${INK}"/>
-      <path d="M27,48 C28,34 38,27 50,27 C62,27 72,34 73,48 Z" fill="${INK}"/>
-      <path d="M31,46 C33,37 40,32 46,31 L44.5,46 Z M69,46 C67,37 60,32 54,31 L55.5,46 Z" fill="none" stroke="${PALE}" stroke-width="1.5" stroke-linejoin="round"/>
-      <path d="M24.5,50.5 H75.5 M23,71 Q50,77 77,71" fill="none" stroke="${PALE}" stroke-width="1.8"/>
-      <circle cx="50" cy="24" r="6.5" fill="${INK}"/><circle cx="50" cy="24" r="2.2" fill="${PALE}"/>`),
+    deacon: card(`<path d="M22,74 L27,47 L73,47 L78,74 Q50,80 22,74 Z" fill="${PALE}"/>
+      <path d="M27,48 C28,34 38,27 50,27 C62,27 72,34 73,48 Z" fill="${PALE}"/>
+      <path d="M31,46 C33,37 40,32 46,31 L44.5,46 Z M69,46 C67,37 60,32 54,31 L55.5,46 Z" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M24.5,50.5 H75.5 M23,71 Q50,77 77,71" fill="none" stroke="${INK}" stroke-width="1.8"/>`),
     // mitre, with lappets
     abbot: card(`<path d="M36,62 L24,88 L33,91 L44,66 Z M64,62 L76,88 L67,91 L56,66 Z" fill="${INK}"/>
       <path d="M26.5,84 L34.5,87 M73.5,84 L65.5,87" stroke="${PALE}" stroke-width="1.6"/>
