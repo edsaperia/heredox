@@ -72,3 +72,12 @@ half a symbol ahead. There are no draws.
   tile's distinct rotations.
 - A transcript is JSON: `{"deck": "…16 letters…", "first": "C"|"V",
   "moves": [[x, y, r], …], "score": [c, v]}`.
+
+## Lore (Edward, 2026-11-21)
+
+- Veridican is the old doctrine and Castian the new one: approximately a
+  reformation. The game is a reminder of a historical schism.
+- A completed symbol shows which doctrine has captured a particular diocese.
+- A heredox (heresy / orthodox) is a diocese that remains split: a Castian
+  half against a Veridican half.
+- Veridican always moves first.
