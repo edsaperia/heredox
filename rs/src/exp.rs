@@ -9,13 +9,16 @@
 //! After a turn with no choice nothing is left over, so the next player draws
 //! two. A restricted player who is left nothing draws one.
 //!
-//!   exp <none|reward|cost> <minutes> <threads> [games]
+//!   exp <none|reward|cost> <minutes> <threads> [games] [castian]
 //! trains a net by self-play for that long, then plays it against itself.
+//! With `castian`, level games go to Castian (the second player) instead of
+//! Veridican. Results are appended to exp.log.
 use heredox::pos::{Fx, Rng, State};
 use heredox::two::{mover_is_first, placed, put, swap_ab, Move, NONE};
 use heredox::{rotate, DIRS, DISTINCT_ROTATIONS, TILES};
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -24,6 +27,13 @@ const H1: usize = 128;
 const H2: usize = 64;
 /// Play is exact once this few tiles remain unplaced.
 const EXACT_UNPLACED: u32 = 5;
+/// Level games go to the first player (Veridican) unless this is set.
+static LEVEL_TO_SECOND: AtomicBool = AtomicBool::new(false);
+
+/// Does the player to move win a finished game?
+fn mover_wins(s: &State) -> bool {
+    s.diff > 0 || (s.diff == 0 && (mover_is_first(s) != LEVEL_TO_SECOND.load(Ordering::Relaxed)))
+}
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Rule {
@@ -290,7 +300,7 @@ impl Solver {
     fn solve(&mut self, p: &Pos) -> f64 {
         let outcomes = deal(p);
         if outcomes.is_empty() {
-            return if p.s.diff > 0 || (p.s.diff == 0 && mover_is_first(&p.s)) { 1.0 } else { 0.0 };
+            return if mover_wins(&p.s) { 1.0 } else { 0.0 };
         }
         let k = if self.use_memo { key(p) } else { (0, 0, 0) };
         if self.use_memo {
@@ -398,6 +408,7 @@ struct Tally {
     forced_turns: usize,  // turns played with no choice of tile (not counting the last tile)
     splits_at_end: usize, // split dioceses on the finished floor
     symbols: usize,       // dioceses held by either side at the end
+    level: usize,         // games that finished level
 }
 
 fn count_joins(s: &State) -> (usize, usize) {
@@ -450,13 +461,67 @@ fn play(net: &Net, solver: &mut Solver, rng: &mut Rng, t: &mut Tally) {
         pos = child;
     }
     // board full: the view is the first player's
-    if pos.s.diff >= 0 {
+    if mover_wins(&pos.s) {
         t.first_wins += 1;
+    }
+    if pos.s.diff == 0 {
+        t.level += 1;
     }
     t.games += 1;
     let (held, split) = count_joins(&pos.s);
     t.symbols += held;
     t.splits_at_end += split;
+}
+
+fn self_play_tally(net: &Arc<Net>, rule: Rule, threads: usize, eval_games: usize) -> Tally {
+    let shared = Arc::clone(net);
+    let mut total = Tally { first_wins: 0, games: 0, split_moves: 0, forced_turns: 0, splits_at_end: 0, symbols: 0, level: 0 };
+    std::thread::scope(|sc| {
+        let hs: Vec<_> = (0..threads)
+            .map(|i| {
+                let net = Arc::clone(&shared);
+                sc.spawn(move || {
+                    let mut rng = Rng(seed(5000 + i as u64));
+                    let mut solver = Solver::new(rule);
+                    let mut t = Tally { first_wins: 0, games: 0, split_moves: 0, forced_turns: 0, splits_at_end: 0, symbols: 0, level: 0 };
+                    for _ in 0..eval_games / threads {
+                        play(&net, &mut solver, &mut rng, &mut t);
+                        if solver.memo.len() > 3_000_000 {
+                            solver.memo.clear();
+                        }
+                    }
+                    t
+                })
+            })
+            .collect();
+        for h in hs {
+            let t = h.join().unwrap();
+            total.first_wins += t.first_wins;
+            total.games += t.games;
+            total.split_moves += t.split_moves;
+            total.forced_turns += t.forced_turns;
+            total.splits_at_end += t.splits_at_end;
+            total.symbols += t.symbols;
+            total.level += t.level;
+        }
+    });
+    total
+}
+
+fn report(rule: Rule, games: u64, hours: f64, t: &Tally) -> String {
+    let n = t.games as f64;
+    format!(
+        "{:?}{} {:5.2} h {:8} training games | self-play {} games: Veridican (first) wins {:.1}%, level {:.1}% | per game: {:.1} moves split a diocese, {:.1} turns with no choice, {:.1} held, {:.1} split",
+        rule, if LEVEL_TO_SECOND.load(Ordering::Relaxed) { " (level games to Castian)" } else { "" }, hours, games, t.games,
+        100.0 * t.first_wins as f64 / n, 100.0 * t.level as f64 / n, t.split_moves as f64 / n, t.forced_turns as f64 / n, t.symbols as f64 / n, t.splits_at_end as f64 / n
+    )
+}
+fn log(line: &str) {
+    use std::io::Write;
+    println!("{}", line);
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("exp.log") {
+        let _ = writeln!(f, "{}", line);
+    }
 }
 
 fn main() {
@@ -500,6 +565,10 @@ fn main() {
     let minutes: f64 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(5.0);
     let threads: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(2);
     let eval_games: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(2000);
+    if args.get(5).map(|s| s.as_str()) == Some("castian") {
+        LEVEL_TO_SECOND.store(true, Ordering::Relaxed);
+    }
+    let mut next_check = 0.125;
     let t0 = Instant::now();
     let mut net = Net::new(&mut Rng(seed(7)));
     let np = net.n_params();
@@ -512,6 +581,11 @@ fn main() {
         let frac = (t0.elapsed().as_secs_f64() / 60.0 / minutes).min(1.0);
         if frac >= 1.0 {
             break;
+        }
+        if frac >= next_check {
+            next_check += 0.125;
+            let t = self_play_tally(&Arc::new(net.clone()), rule, threads, (eval_games / 10).max(100));
+            log(&format!("      {}", report(rule, games, t0.elapsed().as_secs_f64() / 3600.0, &t)));
         }
         let eps = 0.15 - 0.10 * frac;
         let lr = if frac < 0.5 { 1e-3 } else if frac < 0.85 { 3e-4 } else { 1e-4 };
@@ -571,40 +645,6 @@ fn main() {
             net.set_flat(&flat);
         }
     }
-    let shared = Arc::new(net);
-    let mut total = Tally { first_wins: 0, games: 0, split_moves: 0, forced_turns: 0, splits_at_end: 0, symbols: 0 };
-    std::thread::scope(|sc| {
-        let hs: Vec<_> = (0..threads)
-            .map(|i| {
-                let net = Arc::clone(&shared);
-                sc.spawn(move || {
-                    let mut rng = Rng(seed(5000 + i as u64));
-                    let mut solver = Solver::new(rule);
-                    let mut t = Tally { first_wins: 0, games: 0, split_moves: 0, forced_turns: 0, splits_at_end: 0, symbols: 0 };
-                    for _ in 0..eval_games / threads {
-                        play(&net, &mut solver, &mut rng, &mut t);
-                        if solver.memo.len() > 3_000_000 {
-                            solver.memo.clear();
-                        }
-                    }
-                    t
-                })
-            })
-            .collect();
-        for h in hs {
-            let t = h.join().unwrap();
-            total.first_wins += t.first_wins;
-            total.games += t.games;
-            total.split_moves += t.split_moves;
-            total.forced_turns += t.forced_turns;
-            total.splits_at_end += t.splits_at_end;
-            total.symbols += t.symbols;
-        }
-    });
-    let n = total.games as f64;
-    println!(
-        "{:?}: trained on {} games. Net v itself, {} games: first seat wins {:.1}%; per game {:.1} moves make a split, {:.1} turns have no choice, {:.1} dioceses held and {:.1} split at the end",
-        rule, games, total.games, 100.0 * total.first_wins as f64 / n, total.split_moves as f64 / n, total.forced_turns as f64 / n,
-        total.symbols as f64 / n, total.splits_at_end as f64 / n
-    );
+    let total = self_play_tally(&Arc::new(net), rule, threads, eval_games);
+    log(&format!("FINAL {}", report(rule, games, t0.elapsed().as_secs_f64() / 3600.0, &total)));
 }

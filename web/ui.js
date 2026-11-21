@@ -22,21 +22,22 @@
     const s = S.symbols[sym];
     return `<svg viewBox="-1.2 -1.2 2.4 2.4" style="color:${s.color}">${s.art}</svg>`;
   }
-  // lit: for each edge, whether its half is part of a completed symbol;
-  // completed symbols take their doctrine's colour
-  function faceSVG(e, lit) {
+  // lit: for each edge, whether its half is part of a completed symbol.
+  // pulse: the symbol (1 or 2) whose completed symbols should pulse once.
+  function faceSVG(e, lit, pulse) {
     let g = '';
     for (let d = 0; d < 4; d++) {
       if (!e[d]) continue;
       const s = S.symbols[e[d]];
-      g += `<g transform="translate(${MIDS[d][0]},${MIDS[d][1]}) scale(31)" style="color:${lit && lit[d] ? s.held : s.color}">${s.art}</g>`;
+      const cls = lit && lit[d] && e[d] === pulse ? ' class="pulse"' : '';
+      g += `<g${cls} transform="translate(${MIDS[d][0]},${MIDS[d][1]}) scale(31)" style="color:${s.color}">${s.art}</g>`;
     }
     return `<svg viewBox="0 0 100 100">${g}</svg>`;
   }
-  function tileEl(e, cls, lit) {
+  function tileEl(e, cls, lit, pulse) {
     const el = document.createElement('div');
     el.className = 'tile ' + (cls || '');
-    el.innerHTML = `<div class="face">${faceSVG(e, lit)}</div>`;
+    el.innerHTML = `<div class="face">${faceSVG(e, lit, pulse)}</div>`;
     return el;
   }
 
@@ -67,18 +68,23 @@
     boardEl.style.left = L.bx + 'px'; boardEl.style.top = L.by + 'px';
     boardEl.style.width = boardEl.style.height = L.B + 'px';
     stage.style.setProperty('--s', L.s + 'px');
+    stage.style.setProperty('--pulse', S.pulse);
     // The heredox, twice the height of the screen, inscribed in the page: the
     // figure's gradient runs one way and the ground's the other.
     const bw = L.W + 2 * L.ox, bh = L.H + 2 * L.oy, E = S.emblem;
     const bg = $('bg');
     bg.style.left = -L.ox + 'px'; bg.style.top = -L.oy + 'px';
     bg.style.width = bw + 'px'; bg.style.height = bh + 'px';
+    // The figure is a full-page rectangle filled with its own gradient and cut
+    // to the emblem's shape by a mask. (A gradient set on the scaled emblem
+    // itself is measured in the emblem's units, and comes out one flat tone.)
     bg.innerHTML = `<svg viewBox="0 0 ${bw} ${bh}" preserveAspectRatio="none"><defs>
       <linearGradient id="bg-ground" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${bw}" y2="0"><stop offset="0" stop-color="${E.dark}"/><stop offset="1" stop-color="${E.light}"/></linearGradient>
       <linearGradient id="bg-figure" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${bw}" y2="0"><stop offset="0" stop-color="${E.light}"/><stop offset="1" stop-color="${E.dark}"/></linearGradient>
-      <filter id="bg-soft" filterUnits="userSpaceOnUse" x="0" y="0" width="${bw}" height="${bh}"><feGaussianBlur stdDeviation="${bh * 0.0035}"/></filter></defs>
+      <filter id="bg-soft" filterUnits="userSpaceOnUse" x="0" y="0" width="${bw}" height="${bh}"><feGaussianBlur stdDeviation="${bh * 0.0035}"/></filter>
+      <mask id="bg-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${bw}" height="${bh}"><g filter="url(#bg-soft)"><g transform="translate(${bw / 2},${bh / 2}) scale(${bh})" fill="#fff" fill-rule="evenodd"><path transform="scale(-1,1)" d="${E.v}"/><path d="${E.c}"/></g></g></mask></defs>
       <rect width="${bw}" height="${bh}" fill="url(#bg-ground)"/>
-      <g filter="url(#bg-soft)"><g transform="translate(${bw / 2},${bh / 2}) scale(${bh})" fill="url(#bg-figure)" fill-rule="evenodd"><path transform="scale(-1,1)" d="${E.v}"/><path d="${E.c}"/></g></g></svg>`;
+      <rect width="${bw}" height="${bh}" fill="url(#bg-figure)" mask="url(#bg-mask)"/></svg>`;
     // shrink the side panel's text until every button fits
     const sideEl = $('side');
     let f = Math.max(10, L.H / 26);
@@ -109,26 +115,32 @@
     return L.portrait ? { x: ev.clientY, y: window.innerWidth - ev.clientX } : { x: ev.clientX - L.ox, y: ev.clientY - L.oy };
   }
 
-  function renderBoard() {
-    inner.querySelectorAll('.tile, .slot').forEach(n => n.remove());
-    if (!game) return;
-    for (const t of game.board.values()) {
-      const lit = [0, 1, 2, 3].map(d => {
-        const n = game.at(t.x + H.DIRS[d][0], t.y + H.DIRS[d][1]);
-        return !!n && t.e[d] !== 0 && t.e[d] === n.e[(d + 2) % 4];
-      });
-      const el = tileEl(t.e, '', lit);
-      el.style.left = t.x * L.s + 'px'; el.style.top = t.y * L.s + 'px';
-      inner.appendChild(el);
-    }
-    if (pending) {
-      for (const [x, y] of game.legalCells()) {
-        const el = document.createElement('div');
-        el.className = 'slot'; el.dataset.c = x + ',' + y;
-        el.innerHTML = '<i></i>';
-        el.style.left = x * L.s + 'px'; el.style.top = y * L.s + 'px';
+  // pulse: 1 or 2 to make that side's held symbols pulse once
+  function renderBoard(pulse) {
+    inner.querySelectorAll('.tile').forEach(n => n.remove());
+    if (game) {
+      for (const t of game.board.values()) {
+        const lit = [0, 1, 2, 3].map(d => {
+          const n = game.at(t.x + H.DIRS[d][0], t.y + H.DIRS[d][1]);
+          return !!n && t.e[d] !== 0 && t.e[d] === n.e[(d + 2) % 4];
+        });
+        const el = tileEl(t.e, '', lit, pulse);
+        el.style.left = t.x * L.s + 'px'; el.style.top = t.y * L.s + 'px';
         inner.appendChild(el);
       }
+    }
+    renderSlots();
+  }
+  // the dashed squares showing where a tile may go; redrawn without touching the tiles
+  function renderSlots() {
+    inner.querySelectorAll('.slot').forEach(n => n.remove());
+    if (!game || !pending) return;
+    for (const [x, y] of game.legalCells()) {
+      const el = document.createElement('div');
+      el.className = 'slot'; el.dataset.c = x + ',' + y;
+      el.innerHTML = '<i></i>';
+      el.style.left = x * L.s + 'px'; el.style.top = y * L.s + 'px';
+      inner.appendChild(el);
     }
   }
   // a player's count as shown: the first player starts half a symbol ahead
@@ -252,24 +264,13 @@
 
   // --- turns -------------------------------------------------------------
   function commit(x, y, r, w) {
-    const e = H.rotate(H.TILES[game.hand[w]], r);
-    const joins = game.joinsAt(x, y, e);
+    const mover = game.toMove === 'C' ? 1 : 2;
     game.play(x, y, r, w);
     floats[w].el.remove();
     floats.splice(w, 1);
     if (game.variant === 'single') { floats.forEach(f => f.el.remove()); floats = []; }
     pending = false;
-    renderBoard();
-    for (const j of joins) {
-      const el = document.createElement('div');
-      el.className = 'glow';
-      const c = S.symbols[j.sym].held;
-      el.style.background = `radial-gradient(circle, ${c} 0%, ${c}88 30%, transparent 70%)`;
-      el.style.left = (j.x + 0.5 + H.DIRS[j.d][0] * 0.5) * L.s + 'px';
-      el.style.top = (j.y + 0.5 + H.DIRS[j.d][1] * 0.5) * L.s + 'px';
-      inner.appendChild(el);
-      setTimeout(() => el.remove(), 1200);
-    }
+    renderBoard(mover);      // the side that just played sees its held symbols pulse
     centre();
     renderSide(true);
   }
@@ -286,7 +287,7 @@
     dealHand(mine);
     if (mine) {
       pending = true;
-      renderBoard();
+      renderSlots();
       renderSide();
       return;
     }

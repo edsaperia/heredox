@@ -62,13 +62,14 @@
   root.HeredoxSkin = {
     name: 'classic',
     portraits,
+    pulse: '#c0281c',   // the colour a side's held symbols pulse when it has just played
     // the heredox inscribed in the page: half paths (unit radius) and the two tones the gradients run between
     emblem: { v: HALF.V, c: HALF.C, dark: '#120c09', light: '#3d2b1e' },
     hats: bare,   // the same drawings without the card behind them
     // unit-size drawings centred on the origin, radius about 1, using currentColor
     symbols: {
-      1: { color: '#ece9e3', held: '#c4573c', art: whole(HALF.C) },
-      2: { color: '#17100d', held: '#683a62', art: whole(HALF.V) },
+      1: { color: '#ece9e3', art: whole(HALF.C) },
+      2: { color: '#17100d', art: whole(HALF.V) },
     },
     words: {
       title: 'Heredox',
