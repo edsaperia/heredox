@@ -381,6 +381,17 @@
   $('b-rules').addEventListener('click', showRules);
   $('b-menu').addEventListener('click', showMenu);
   document.addEventListener('contextmenu', ev => ev.preventDefault());
+  // iOS Safari zooms on a double tap whatever the page asks for, and tapping a
+  // tile twice to turn it twice is a double tap. Cancel the second tap's
+  // default action (pointer events, which the tiles use, still arrive).
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', ev => {
+    const now = Date.now();
+    if (now - lastTouchEnd < 400) ev.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+  document.addEventListener('dblclick', ev => ev.preventDefault());
+  ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, ev => ev.preventDefault()));
   window.addEventListener('resize', () => {
     layout(); renderBoard();
     floats.forEach(f => {
