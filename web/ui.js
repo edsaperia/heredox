@@ -13,6 +13,9 @@
   // Three tiles to choose from is the main game. The two-tile ('two') and
   // one-tile ('single') games still work; their menu switch is commented out.
   let variant = 'three';
+  // tutor mode: after each of your moves, see the stronger one you missed; remembered between visits
+  let tutor = false;
+  try { tutor = localStorage.getItem('heredox-tutor') === '1'; } catch (e) {}
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const isHuman = sym => mode === '2p' || sym === you;
@@ -271,9 +274,15 @@
     }
     const c = cellAt(f.pos);
     if (game.isLegalCell(c[0], c[1])) {      // dropping on a legal cell ends the turn
-      commit(c[0], c[1], ((f.rot % 4) + 4) % 4, floats.indexOf(f));
+      const mv = [c[0], c[1], ((f.rot % 4) + 4) % 4, floats.indexOf(f)];
+      const rv = tutor && mode === '1p' ? AI.review(game, mv) : null;
+      const kinds = game.hand.slice();
+      commit(...mv);
+      let wait = 600;
+      if (rv && rv.loss < GOOD.loss && rv.spread > GOOD.spread) { burn(mv[0], mv[1]); wait = 1500; }
+      else if (rv && rv.loss > COSTLY) { stronger(rv.best, kinds, mv[3]); wait = 2600; }
       const g = gen;
-      setTimeout(() => { if (g === gen) nextTurn(); }, 600);
+      setTimeout(() => { if (g === gen) nextTurn(); }, wait);
     } else {
       rest(f, f.slot);
       markTarget(null);
@@ -334,15 +343,48 @@
     if (g === gen) nextTurn();
   }
 
-  function hint() {
-    if (!pending) return;
-    stage.querySelectorAll('.ghost').forEach(n => n.remove());
-    const [x, y, r, w] = AI.chooseMove(game, 'abbot');
-    const el = tileEl(H.rotate(H.TILES[game.hand[w || 0]], r), 'float ghost');
+  // --- tutor mode ----------------------------------------------------------
+  // A move is good when it is the strongest and most other moves were clearly
+  // worse; costly when it gave up this much of the chance of winning.
+  const GOOD = { loss: 0.01, spread: 0.1 }, COSTLY = 0.08;
+  function ghostAt(kind, x, y, r) {
+    const el = tileEl(H.rotate(H.TILES[kind], r), 'float ghost');
     const p = cellCentre(x, y);
     el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
     stage.appendChild(el);
     setTimeout(() => el.remove(), 2700);
+  }
+  // show the stronger move, after the fact: kinds is the hand before the move, played the index used
+  function stronger(best, kinds, played) {
+    const [x, y, r, w] = best;
+    ghostAt(kinds[w], x, y, r);
+    if (kinds[w] !== kinds[played]) {     // it used a different tile: that one is still in the tray
+      const f = floats[w > played ? w - 1 : w];
+      if (f) { f.el.classList.add('hinted'); setTimeout(() => f.el.classList.remove('hinted'), 2700); }
+    }
+  }
+  function burn(x, y) {
+    const el = document.createElement('div'), p = cellCentre(x, y);
+    el.className = 'burn';
+    el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
+    let h = '<b></b>';
+    for (let i = 0; i < 11; i++) {        // tongues of flame along the tile
+      const u = (i + 0.5) / 11 + (Math.random() - 0.5) * 0.06;
+      h += `<i style="left:${(u * 100).toFixed(1)}%;top:${(60 + Math.random() * 42).toFixed(0)}%;--h:${(0.8 + Math.random() * 0.75).toFixed(2)};animation-delay:${(Math.random() * 0.3).toFixed(2)}s"></i>`;
+    }
+    for (let i = 0; i < 22; i++) {        // sparks
+      h += `<u style="left:${(Math.random() * 100).toFixed(0)}%;top:${(Math.random() * 80).toFixed(0)}%;--dx:${((Math.random() - 0.5) * 0.9).toFixed(2)};--dy:${(-0.6 - Math.random() * 1.1).toFixed(2)};animation-delay:${(0.1 + Math.random() * 0.6).toFixed(2)}s"></u>`;
+    }
+    el.innerHTML = h;
+    stage.appendChild(el);
+    setTimeout(() => el.remove(), 2400);
+  }
+
+  function hint() {
+    if (!pending) return;
+    stage.querySelectorAll('.ghost').forEach(n => n.remove());
+    const [x, y, r, w] = AI.chooseMove(game, 'abbot');
+    ghostAt(game.hand[w || 0], x, y, r);
     if (floats.length > 1) {              // show which of the two tiles is meant
       const f = floats[w || 0];
       f.el.classList.remove('hinted'); void f.el.offsetWidth; f.el.classList.add('hinted');
@@ -355,7 +397,7 @@
     gen++;
     mode = m; if (lv) level = lv;
     if (side) you = side;
-    stage.querySelectorAll('.float, .glow').forEach(n => n.remove());
+    stage.querySelectorAll('.float, .glow, .burn').forEach(n => n.remove());
     floats = []; pending = false; drag = null; ended = false;
     game = new H.Game(H.shuffledDeck(Math.random), 'V', variant);   // Veridican always moves first
     stage.style.setProperty('--k', game.choice);
@@ -383,7 +425,8 @@
   }
   function showSide(lv) {
     const btn = p => `<button class="card" data-act="side" data-side="${p}" data-level="${lv}">${S.portraits[p]}<span>${W.names[p]}</span>${W.sideNotes[p].map(n => `<small>${n}</small>`).join('')}</button>`;
-    openPanel(`<h2>${W.chooseSide}</h2><div class="cards"><div class="group">${btn('V')}${btn('C')}</div></div>`,
+    openPanel(`<h2>${W.chooseSide}</h2><div class="cards"><div class="group">${btn('V')}${btn('C')}</div></div>
+      <button class="tutor${tutor ? ' on' : ''}" data-act="tutor" data-level="${lv}"><i></i><span>${W.tutor}</span><small>${W.tutorNote}</small></button>`,
       false, 'menu', showMenu);
   }
   function showMenu() {
@@ -412,6 +455,11 @@
     const act = b.dataset.act;
     if (act === '1p') showSide(b.dataset.level);
     else if (act === 'side') newGame('1p', b.dataset.level, b.dataset.side);
+    else if (act === 'tutor') {
+      tutor = !tutor;
+      try { localStorage.setItem('heredox-tutor', tutor ? '1' : '0'); } catch (e) {}
+      b.classList.toggle('on', tutor);
+    }
     else if (act === '2p') newGame('2p');
     else if (act === 'variant') { variant = b.dataset.v; showMenu(); }
     else if (act === 'rules') showRules();
@@ -457,5 +505,5 @@
   });
   renderSide(); layout(); showMenu();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { layout(); renderBoard(); });
-  self.__heredox = { get game() { return game; }, get you() { return you; }, cellCentre, trayCentre, slotCentre, get L() { return L; } };
+  self.__heredox = { get game() { return game; }, get you() { return you; }, cellCentre, trayCentre, slotCentre, get L() { return L; }, burn, stronger, get tutor() { return tutor; } };
 })();

@@ -64,6 +64,21 @@
   #status { text-align: center; font-style: italic; font-size: 1.1em; line-height: 1.2; min-height: 1.2em; }
   #tray { width: calc(var(--ts) * (var(--k, 3) * 1.07 + .07)); height: calc(var(--ts) * 1.12); border-radius: 8%; border: 1px solid rgba(240,223,184,.25); background: rgba(0,0,0,.25); }
   .float.hinted .face { animation: hinted 2.6s ease; }
+  /* a good move in tutor mode: the tile catches fire */
+  .burn { position: absolute; z-index: 7; width: var(--s); height: var(--s); margin: calc(var(--s) * -.5) 0 0 calc(var(--s) * -.5); pointer-events: none; }
+  .burn b { position: absolute; inset: 1.5%; border-radius: 5%; animation: scorch 2s ease-out forwards; mix-blend-mode: screen;
+    background: radial-gradient(circle at 50% 60%, rgba(255,200,90,.7), rgba(255,110,20,.75) 50%, rgba(210,40,10,.6) 80%, rgba(150,10,0,.3));
+    box-shadow: 0 0 calc(var(--s) * .12) calc(var(--s) * .03) rgba(255,120,20,.9), 0 0 calc(var(--s) * .4) calc(var(--s) * .1) rgba(220,50,10,.55); }
+  @keyframes scorch { 0% { opacity: 0; transform: scale(.9); } 8% { opacity: 1; transform: scale(1.04); } 45% { opacity: .75; transform: scale(1); } 100% { opacity: 0; } }
+  .burn i { position: absolute; width: calc(var(--s) * .26); height: calc(var(--s) * var(--h)); margin: calc(var(--s) * var(--h) * -1) 0 0 calc(var(--s) * -.13);
+    border-radius: 50% 50% 35% 35% / 85% 85% 15% 15%; transform-origin: 50% 100%; opacity: 0; filter: blur(calc(var(--s) * .018));
+    background: radial-gradient(ellipse 50% 60% at 50% 100%, #fff6d0 0%, #ffd060 30%, rgba(255,122,24,.95) 55%, rgba(215,45,10,.7) 78%, rgba(120,10,0,0) 100%);
+    animation: flame 1.9s ease-out forwards; }
+  @keyframes flame { 0% { opacity: 0; transform: scale(.6, .1); } 12% { opacity: 1; transform: scale(1.1, .9) skewX(4deg); } 30% { transform: scale(.85, 1.1) skewX(-6deg); }
+    50% { opacity: .95; transform: scale(1, .95) skewX(5deg); } 72% { transform: scale(.7, 1.05) skewX(-4deg); } 100% { opacity: 0; transform: scale(.3, 1.3) translateY(-35%); } }
+  .burn u { position: absolute; width: calc(var(--s) * .035); height: calc(var(--s) * .035); border-radius: 50%; background: #ffe9a8; opacity: 0;
+    box-shadow: 0 0 calc(var(--s) * .04) calc(var(--s) * .012) #ff8a1e; animation: spark 1.2s ease-out forwards; }
+  @keyframes spark { 0% { opacity: 0; transform: translate(0, 0) scale(1); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(var(--s) * var(--dx)), calc(var(--s) * var(--dy))) scale(.3); } }
   @keyframes hinted { 15%, 80% { box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accent); } }
   .emblem { display: inline-block; width: 1.2em; height: 1.2em; filter: drop-shadow(0 0 .8px var(--ink)) drop-shadow(0 0 .8px var(--ink)) drop-shadow(0 0 .8px var(--ink)); }
   .emblem svg { display: block; width: 100%; height: 100%; }
@@ -108,6 +123,12 @@
   .card small { font-size: .7em; font-style: italic; color: var(--ink-dim); margin-top: -.35em; white-space: nowrap; }
   .card svg { width: 100%; display: block; border-radius: 6%; box-shadow: 0 3px 10px rgba(0,0,0,.6); transition: transform .15s; }
   .card:active svg { transform: scale(.95); }
+  #panel.menu button.tutor { color: var(--ink); display: inline-flex; align-items: center; gap: .6em; margin: 1.2em auto 0; padding: .35em .9em; background: none; border: 1px solid rgba(240,223,184,.3); border-radius: 2em; min-width: 0; font-size: 1em; }
+  button.tutor i { width: 2em; height: 1.1em; border-radius: 1em; background: rgba(255,255,255,.12); border: 1px solid var(--ink-dim); position: relative; transition: background .2s; flex: none; }
+  button.tutor i::after { content: ''; position: absolute; left: .1em; top: .1em; width: .8em; height: .8em; border-radius: 50%; background: var(--ink-dim); transition: transform .2s, background .2s; }
+  button.tutor.on i { background: var(--accent); border-color: var(--accent); }
+  button.tutor.on i::after { transform: translateX(.9em); background: var(--panel-ink); }
+  button.tutor small { font-size: .75em; font-style: italic; color: var(--ink-dim); }
   .switch { margin-top: 1.3em; display: inline-flex; border: 1px solid var(--ink-dim); border-radius: .5em; overflow: hidden; }
   #panel.menu .switch button { margin: 0; border: none; border-radius: 0; color: var(--ink-dim); background: none; font-size: 1.05em; padding: .4em 1.1em; min-width: 0; }
   #panel.menu .switch button.on { background: var(--ink); color: var(--panel-ink); }

@@ -339,7 +339,28 @@
     return [m.x + s.ox, m.y + s.oy, m.r];
   }
 
-  const api = { Solver, Solver2, setNet, netValue, features, hasNet: () => !!NET, LEVELS, fromGame, place, legalCells, key, remaining, chooseMove };
+  // Abbot's view of every way to play this turn, for the tutor: how good the
+  // move [x, y, r, which] is beside the strongest. Call before playing it.
+  // -> { best: [x, y, r, which], loss, spread }: chances of winning given up
+  // by the move, and how far the strongest stands above the typical move.
+  function review(game, move) {
+    const s = fromGame(game), hand = game.hand.map(t => H.TYPES.indexOf(t));
+    const exact = 16 - game.turn <= LEVELS.abbot.exactUnplaced && s.mask;
+    if (!exact && !(NET && NET.choice === game.choice)) return null;
+    if (exact && solver2.memo.size > 400000) solver2.memo.clear();
+    const ms = ways(s, hand);
+    for (const m of ms) {
+      const n = put(s, m.t, m.r, m.x, m.y);
+      m.q = exact ? solver2.solve(n, m.left)[s.mover - 1] : 1 - netValue(n, m.left);
+    }
+    const [x, y, r, w] = move, t = hand[w || 0], rots = s.mask === 0 ? 1 : ROTS[t];
+    const mine = ms.find(m => m.t === t && m.r === r % rots && (s.mask === 0 || (m.x + s.ox === x && m.y + s.oy === y)));
+    if (!mine) return null;
+    const qs = ms.map(m => m.q).sort((a, b) => a - b), top = ms.reduce((a, b) => (b.q > a.q ? b : a));
+    return { best: [top.x + s.ox, top.y + s.oy, top.r, top.w], loss: top.q - mine.q, spread: top.q - qs[qs.length >> 1], exact: !!exact };
+  }
+
+  const api = { review, Solver, Solver2, setNet, netValue, features, hasNet: () => !!NET, LEVELS, fromGame, place, legalCells, key, remaining, chooseMove };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.HeredoxAI = api;
 })(typeof self !== 'undefined' ? self : this);
