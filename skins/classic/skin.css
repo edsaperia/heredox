@@ -1,0 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap');
+:root {
+  --table: #1c1410;
+  --table-2: #2a1d15;
+  --ink: #f0dfb8;
+  --ink-dim: #b59f78;
+  --tile-a: #e9b85a;
+  --tile-b: #c98a2e;
+  --tile-edge: #8a5a1c;
+  --accent: #f8e58c;
+  --panel: #f1deb0;
+  --panel-ink: #2a1a10;
+  --font-display: 'IM Fell English SC', Georgia, serif;
+  --font-body: 'IM Fell English', Georgia, serif;
+}

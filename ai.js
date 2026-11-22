@@ -1,0 +1,366 @@
+// Heredox computer players: exact endgame search plus simple lookahead.
+// Positions here use real symbols (1 Castian, 2 Veridican); diff is Castian
+// minus Veridican. The value of a position is [P(Castian wins), P(Veridican wins)].
+// Equal counts are a win for the player who moved first (s.first).
+(function (root) {
+  const H = typeof module !== 'undefined' && module.exports ? require('./engine.js') : root.Heredox;
+  const T = H.TYPES.map(t => H.TILES[t]);
+  const ROTS = H.TYPES.map(t => H.DISTINCT_ROTATIONS[t]);
+  const DIRS = H.DIRS;
+  // ROTATED[t][r] = edges
+  const ROTATED = T.map(e => [0, 1, 2, 3].map(r => H.rotate(e, r)));
+
+  // state: {mask, cells: Array(16) of edges|null, counts[5], diff, mover}
+  function fromGame(g) {
+    const s = { mask: 0, cells: new Array(16).fill(null), counts: [0, 0, 0, 0, 0], diff: 0, mover: g.toMove === 'C' ? 1 : 2, first: g.first === 'C' ? 1 : 2, ox: 0, oy: 0 };
+    // single: the tile in hand counts as the next draw; two: the stack only
+    for (let i = g.variant === 'single' ? g.turn : g.pos; i < 16; i++) s.counts[H.TYPES.indexOf(g.deck[i])]++;
+    s.choice = g.choice;
+    if (g.board.size) {
+      const [x0, , y0] = g.bounds();
+      s.ox = x0; s.oy = y0;
+      for (const t of g.board.values()) {
+        const j = (t.y - y0) * 4 + (t.x - x0);
+        s.mask |= 1 << j;
+        s.cells[j] = t.e;
+      }
+    }
+    const [c, v] = g.score();
+    s.diff = c - v;
+    return s;
+  }
+  function size(s) {
+    let w = 0, h = 0;
+    for (let i = 0; i < 16; i++) if (s.mask >> i & 1) { w = Math.max(w, i % 4 + 1); h = Math.max(h, (i >> 2) + 1); }
+    return [w, h];
+  }
+  const filled = (s, x, y) => x >= 0 && x < 4 && y >= 0 && y < 4 && (s.mask >> (y * 4 + x) & 1) === 1;
+
+  function legalCells(s) {
+    if (s.mask === 0) return [[0, 0]];
+    const [w, h] = size(s), out = [];
+    for (let y = -1; y <= Math.min(h, 3); y++) {
+      for (let x = -1; x <= Math.min(w, 3); x++) {
+        if (filled(s, x, y)) continue;
+        if ((x === -1 || x === w) && w === 4) continue;
+        if ((y === -1 || y === h) && h === 4) continue;
+        if (filled(s, x - 1, y) || filled(s, x + 1, y) || filled(s, x, y - 1) || filled(s, x, y + 1)) out.push([x, y]);
+      }
+    }
+    return out;
+  }
+  function gain(s, e, x, y) { // change in diff from placing edges e at (x, y)
+    let g = 0;
+    for (let d = 0; d < 4; d++) {
+      if (e[d] === 0) continue;
+      const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
+      if (filled(s, nx, ny) && s.cells[ny * 4 + nx][(d + 2) % 4] === e[d]) g += e[d] === 1 ? 1 : -1;
+    }
+    return g;
+  }
+  function place(s, t, r, x, y) {
+    const e = ROTATED[t][r];
+    const sx = x === -1 ? 1 : 0, sy = y === -1 ? 1 : 0;
+    const n = { mask: 0, cells: new Array(16).fill(null), counts: s.counts.slice(), diff: s.diff + gain(s, e, x, y), mover: 3 - s.mover, first: s.first, choice: s.choice, ox: s.ox - sx, oy: s.oy - sy };
+    if (sx || sy) {
+      for (let i = 0; i < 16; i++) if (s.mask >> i & 1) {
+        const j = ((i >> 2) + sy) * 4 + i % 4 + sx;
+        n.mask |= 1 << j; n.cells[j] = s.cells[i];
+      }
+    } else { n.mask = s.mask; n.cells = s.cells.slice(); }
+    const j = (y + sy) * 4 + x + sx;
+    n.mask |= 1 << j; n.cells[j] = e;
+    n.counts[t]--;
+    return n;
+  }
+  function key(s) {
+    const [w, h] = size(s);
+    let edges = '';
+    for (let i = 0; i < 16; i++) {
+      if (!(s.mask >> i & 1)) continue;
+      const x = i % 4, y = i >> 2;
+      for (let d = 0; d < 4; d++) {
+        const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
+        if (filled(s, nx, ny)) continue;
+        const open = (DIRS[d][0] === 0 || (nx >= 0 && nx < 4) || w < 4) && (DIRS[d][1] === 0 || (ny >= 0 && ny < 4) || h < 4);
+        edges += open ? s.cells[i][d] : 0;
+      }
+    }
+    return s.mask + '|' + edges + '|' + s.counts.join('') + '|' + s.diff + '|' + s.mover + s.first;
+  }
+  const remaining = s => s.counts[0] + s.counts[1] + s.counts[2] + s.counts[3] + s.counts[4];
+  const EPS = 1e-12;
+  // is value a better than b for the given mover? own win first, then the other's
+  function better(mover, a, b) {
+    const m = mover - 1, o = 1 - m;
+    return a[m] > b[m] + EPS || (Math.abs(a[m] - b[m]) <= EPS && a[o] < b[o] - EPS);
+  }
+
+  class Solver {
+    constructor() { this.memo = new Map(); }
+    bestForTile(s, t) {
+      let best = null, move = null;
+      const rots = s.mask === 0 ? 1 : ROTS[t];
+      for (const [x, y] of legalCells(s)) {
+        for (let r = 0; r < rots; r++) {
+          const v = this.solve(place(s, t, r, x, y));
+          if (best === null || better(s.mover, v, best)) { best = v; move = [x, y, r]; }
+        }
+      }
+      return { value: best, move };
+    }
+    solve(s) {
+      const rem = remaining(s);
+      if (rem === 0) return s.diff > 0 || (s.diff === 0 && s.first === 1) ? [1, 0] : [0, 1];
+      const kk = key(s);
+      const hit = this.memo.get(kk);
+      if (hit) return hit;
+      const acc = [0, 0];
+      for (let t = 0; t < 5; t++) {
+        if (!s.counts[t]) continue;
+        const p = s.counts[t] / rem, v = this.bestForTile(s, t).value;
+        acc[0] += p * v[0]; acc[1] += p * v[1];
+      }
+      this.memo.set(kk, acc);
+      return acc;
+    }
+  }
+
+  // --- move choice ------------------------------------------------------
+  function pick(list, rand) { return list[Math.floor(rand() * list.length)]; }
+  const sign = s => (s.mover === 1 ? 1 : -1);
+
+  // every move with its immediate gain for the mover
+  function scoredMoves(s, t) {
+    const out = [];
+    for (const [x, y] of legalCells(s)) for (let r = 0; r < ROTS[t]; r++) out.push({ x, y, r, g: sign(s) * gain(s, ROTATED[t][r], x, y) });
+    return out;
+  }
+  function greedy(s, t, rand) {
+    const ms = scoredMoves(s, t), top = Math.max(...ms.map(m => m.g));
+    return pick(ms.filter(m => m.g === top), rand);
+  }
+  // my gain now, less the opponent's best immediate reply averaged over their draw
+  function lookahead(s, t, rand) {
+    const ms = scoredMoves(s, t);
+    let best = -99, top = [];
+    for (const m of ms) {
+      const n = place(s, t, m.r, m.x, m.y), rem = remaining(n);
+      let reply = 0;
+      if (rem) for (let u = 0; u < 5; u++) {
+        if (!n.counts[u]) continue;
+        reply += n.counts[u] / rem * Math.max(...scoredMoves(n, u).map(q => q.g));
+      }
+      const val = m.g - reply;
+      if (val > best + 1e-9) { best = val; top = [m]; } else if (Math.abs(val - best) <= 1e-9) top.push(m);
+    }
+    return pick(top, rand);
+  }
+
+  // --- several tiles to choose from ---------------------------------------
+  // Here s.counts is the face-down stack only, and s.choice is how many tiles
+  // there are to choose from. The mover holds the tiles left for them and,
+  // while the stack lasts, draws one more.
+  function put(s, t, r, x, y) {           // place a tile from the hand: the stack is untouched
+    const n = place(s, t, r, x, y);
+    n.counts[t]++;
+    return n;
+  }
+  const placedCount = s => { let n = 0; for (let i = 0; i < 16; i++) n += s.mask >> i & 1; return n; };
+  // every distinct way to play `hand`: {w, t, x, y, r, child, left}
+  function ways(s, hand) {
+    const out = [], rotsFor = t => (s.mask === 0 ? 1 : ROTS[t]);
+    hand.forEach((t, w) => {
+      if (hand.indexOf(t) !== w) return;
+      const left = hand.filter((_, i) => i !== w);
+      for (const [x, y] of legalCells(s)) for (let r = 0; r < rotsFor(t); r++) out.push({ w, t, x, y, r, left });
+    });
+    return out;
+  }
+  class Solver2 {
+    constructor() { this.memo = new Map(); }
+    // best play holding `hand` (type indices)
+    best(s, hand) {
+      let best = null, move = null;
+      for (const m of ways(s, hand)) {
+        const v = this.solve(put(s, m.t, m.r, m.x, m.y), m.left);
+        if (best === null || better(s.mover, v, best)) { best = v; move = [m.x, m.y, m.r, m.w]; }
+      }
+      return { value: best, move };
+    }
+    // value before the mover draws, with `left` waiting for them
+    solve(s, left) {
+      const rem = remaining(s);
+      if (rem === 0 && left.length === 0) return s.diff > 0 || (s.diff === 0 && s.first === 1) ? [1, 0] : [0, 1];
+      const kk = key(s) + '#' + left.slice().sort().join('');
+      const hit = this.memo.get(kk);
+      if (hit) return hit;
+      let acc;
+      if (rem === 0 || left.length >= s.choice) acc = this.best(s, left).value;
+      else {
+        acc = [0, 0];
+        for (let d = 0; d < 5; d++) {
+          if (!s.counts[d]) continue;
+          const p = s.counts[d] / rem;
+          const n = Object.assign({}, s, { counts: s.counts.slice() });
+          n.counts[d]--;
+          const v = this.best(n, left.concat([d])).value;
+          acc[0] += p * v[0]; acc[1] += p * v[1];
+        }
+      }
+      this.memo.set(kk, acc);
+      return acc;
+    }
+  }
+  function scoredMoves2(s, hand) {
+    return ways(s, hand).map(m => Object.assign(m, { g: sign(s) * gain(s, ROTATED[m.t][m.r], m.x, m.y) }));
+  }
+  function greedy2(s, hand, rand) {
+    const ms = scoredMoves2(s, hand), top = Math.max(...ms.map(m => m.g));
+    return pick(ms.filter(m => m.g === top), rand);
+  }
+  // my gain now, less the opponent's best immediate reply with the tiles I
+  // leave them plus whatever they draw
+  function lookahead2(s, hand, rand) {
+    let best = -99, top = [];
+    for (const m of scoredMoves2(s, hand)) {
+      const n = put(s, m.t, m.r, m.x, m.y), rem = remaining(n);
+      let reply = 0;
+      if (rem) for (let d = 0; d < 5; d++) {
+        if (!n.counts[d]) continue;
+        reply += n.counts[d] / rem * Math.max(...scoredMoves2(n, m.left.concat([d])).map(q => q.g));
+      } else if (m.left.length) reply = Math.max(...scoredMoves2(n, m.left).map(q => q.g));
+      const val = m.g - reply;
+      if (val > best + 1e-9) { best = val; top = [m]; } else if (Math.abs(val - best) <= 1e-9) top.push(m);
+    }
+    return pick(top, rand);
+  }
+
+  // --- value network -----------------------------------------------------------
+  // Trained by rs/src/exp.rs. Input: a position just after a tile was placed,
+  // as the player about to draw sees it (their symbol is "own"), plus the
+  // tiles left for them. Output: the chance that player wins.
+  let NET = null;
+  function setNet(d) {
+    if (!d) { NET = null; return; }
+    const w = Float32Array.from(d.w), nf = d.nf, h1 = d.h1, h2 = d.h2;
+    let o = 0;
+    const take = n => w.subarray(o, o += n);
+    NET = { nf, h1, h2, w1: take(nf * h1), b1: take(h1), w2: take(h2 * h1), b2: take(h2), w3: take(h2), b3: w[o], games: d.games, choice: d.choice };
+    if (o + 1 !== w.length || nf !== 168) throw new Error('net has the wrong shape');
+  }
+  const swapAB = t => (t === 0 ? 1 : t === 1 ? 0 : t);
+  function features(s, left) {            // left: type indices of the tiles waiting for the mover
+    const x = new Float32Array(168), [w, hh] = size(s), own = s.mover;
+    for (let i = 0; i < 16; i++) {
+      if (!(s.mask >> i & 1)) continue;
+      x[i * 9] = 1;
+      const cx = i % 4, cy = i >> 2;
+      for (let d = 0; d < 4; d++) {
+        const nx = cx + DIRS[d][0], ny = cy + DIRS[d][1];
+        if (filled(s, nx, ny)) continue;
+        const open = (DIRS[d][0] === 0 || (nx >= 0 && nx < 4) || w < 4) && (DIRS[d][1] === 0 || (ny >= 0 && ny < 4) || hh < 4);
+        const v = s.cells[i][d];
+        if (open && v) x[i * 9 + 2 * d + (v === own ? 1 : 2)] = 1;
+      }
+    }
+    if (s.mask) { x[144 + w - 1] = 1; x[148 + hh - 1] = 1; }
+    // seen from the other side, tile kinds A and B swap names
+    const rel = t => (own === 1 ? t : swapAB(t));
+    for (const t of left) x[152 + rel(t)] += 0.5;
+    x[157] = left.length ? 0 : 1;
+    for (let t = 0; t < 5; t++) x[158 + rel(t)] = s.counts[t] / 4;
+    x[163] = (own === 1 ? s.diff : -s.diff) / 6;
+    x[164] = remaining(s) / 14;
+    x[165] = s.first === s.mover ? 1 : 0;
+    return x;                             // 166, 167: the rule-experiment flags, always 0 in the game
+  }
+  function netValue(s, left) {
+    const N = NET, x = features(s, left), a1 = Float32Array.from(N.b1), h1 = N.h1;
+    for (let i = 0; i < N.nf; i++) {
+      const xi = x[i];
+      if (xi !== 0) { const o = i * h1; for (let j = 0; j < h1; j++) a1[j] += xi * N.w1[o + j]; }
+    }
+    for (let j = 0; j < h1; j++) if (a1[j] < 0) a1[j] = 0;
+    let z = N.b3;
+    for (let k = 0; k < N.h2; k++) {
+      let acc = N.b2[k];
+      const o = k * h1;
+      for (let j = 0; j < h1; j++) acc += N.w2[o + j] * a1[j];
+      if (acc > 0) z += N.w3[k] * acc;
+    }
+    return 1 / (1 + Math.exp(-z));
+  }
+  // the move after which the opponent's chances look worst
+  function netMove(s, hand) {
+    let best = -1, move = null;
+    for (const m of ways(s, hand)) {
+      const q = 1 - netValue(put(s, m.t, m.r, m.x, m.y), m.left);
+      if (q > best) { best = q; move = m; }
+    }
+    return move;
+  }
+  if (root.HeredoxNetData) setNet(root.HeredoxNetData);
+
+  // exactFrom: tiles left to place at which the one-tile game turns exact.
+  // exactUnplaced: the same for the game with several tiles to choose from.
+  const LEVELS = {
+    novice: { exactFrom: 0, early: greedy, exactUnplaced: 0, early2: greedy2 },
+    // Deacon is the trained player with lapses: on `slip` of its early turns it takes the greedy move instead.
+    deacon: { exactFrom: 4, early: greedy, exactUnplaced: 3, early2: greedy2, net: true, slip: 0.4 },
+    abbot: { exactFrom: 6, early: lookahead, exactUnplaced: 5, early2: lookahead2, net: true },   // uses the trained net when one is loaded
+  };
+  const solver = new Solver(), solver2 = new Solver2();
+
+  // Choose a move in game coordinates for the player to move:
+  // [x, y, r] or, with several tiles to choose from, [x, y, r, which].
+  function chooseMove(game, level, rand) {
+    rand = rand || Math.random;
+    const L = LEVELS[level] || LEVELS.abbot;
+    const s = fromGame(game);
+    if (game.variant !== 'single') {
+      const hand = game.hand.map(t => H.TYPES.indexOf(t));
+      let m;
+      if (16 - game.turn <= L.exactUnplaced && s.mask) {
+        if (solver2.memo.size > 400000) solver2.memo.clear();
+        const b = solver2.best(s, hand).move;
+        m = { x: b[0], y: b[1], r: b[2], w: b[3] };
+      } else if (L.net && NET && NET.choice === game.choice && !(L.slip && rand() < L.slip)) m = netMove(s, hand);
+      else m = L.early2(s, hand, rand);
+      return [m.x + s.ox, m.y + s.oy, m.r, m.w];
+    }
+    const t = H.TYPES.indexOf(game.tile);
+    let m;
+    if (remaining(s) <= L.exactFrom) {
+      if (solver.memo.size > 400000) solver.memo.clear();
+      const b = solver.bestForTile(s, t).move;
+      m = { x: b[0], y: b[1], r: b[2] };
+    } else m = L.early(s, t, rand);
+    return [m.x + s.ox, m.y + s.oy, m.r];
+  }
+
+  // Abbot's view of every way to play this turn, for the tutor: how good the
+  // move [x, y, r, which] is beside the strongest. Call before playing it.
+  // -> { best: [x, y, r, which], loss, spread }: chances of winning given up
+  // by the move, and how far the strongest stands above the typical move.
+  function review(game, move) {
+    const s = fromGame(game), hand = game.hand.map(t => H.TYPES.indexOf(t));
+    const exact = 16 - game.turn <= LEVELS.abbot.exactUnplaced && s.mask;
+    if (!exact && !(NET && NET.choice === game.choice)) return null;
+    if (exact && solver2.memo.size > 400000) solver2.memo.clear();
+    const ms = ways(s, hand);
+    for (const m of ms) {
+      const n = put(s, m.t, m.r, m.x, m.y);
+      m.q = exact ? solver2.solve(n, m.left)[s.mover - 1] : 1 - netValue(n, m.left);
+    }
+    const [x, y, r, w] = move, t = hand[w || 0], rots = s.mask === 0 ? 1 : ROTS[t];
+    const mine = ms.find(m => m.t === t && m.r === r % rots && (s.mask === 0 || (m.x + s.ox === x && m.y + s.oy === y)));
+    if (!mine) return null;
+    const qs = ms.map(m => m.q).sort((a, b) => a - b), top = ms.reduce((a, b) => (b.q > a.q ? b : a));
+    return { best: [top.x + s.ox, top.y + s.oy, top.r, top.w], loss: top.q - mine.q, spread: top.q - qs[qs.length >> 1], exact: !!exact };
+  }
+
+  const api = { review, Solver, Solver2, setNet, netValue, features, hasNet: () => !!NET, LEVELS, fromGame, place, legalCells, key, remaining, chooseMove };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.HeredoxAI = api;
+})(typeof self !== 'undefined' ? self : this);

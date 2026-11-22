@@ -1,0 +1,106 @@
+// Classic skin: every word and every piece of art the page shows.
+(function (root) {
+  // Right-hand halves of each symbol, traced from the old app icon by
+  // art/trace.py. Unit coordinates: symbol centre at the origin, Veridican
+  // radius 1.
+  const HALF = {
+    C: 'M0.768,0.053L0.278,0.053L0.275,0.055L0.275,0.062L0.270,0.069L0.270,0.080L0.266,0.086L0.266,0.093L0.262,0.100L0.257,0.119L0.243,0.147L0.236,0.155L0.230,0.169L0.214,0.186L0.209,0.196L0.189,0.215L0.179,0.221L0.163,0.237L0.158,0.238L0.149,0.245L0.104,0.268L0.097,0.268L0.091,0.273L0.080,0.273L0.073,0.277L0.067,0.277L0.060,0.281L0.050,0.281L0.047,0.284L0.046,0.778L0.048,0.781L0.064,0.777L0.071,0.773L0.078,0.773L0.102,0.760L0.108,0.760L0.136,0.746L0.144,0.738L0.158,0.733L0.188,0.708L0.193,0.706L0.256,0.644L0.266,0.626L0.278,0.613L0.288,0.590L0.295,0.583L0.293,0.579L0.286,0.572L0.254,0.554L0.212,0.512L0.200,0.495L0.182,0.458L0.182,0.451L0.173,0.432L0.173,0.412L0.168,0.405L0.168,0.368L0.173,0.361L0.173,0.341L0.177,0.335L0.177,0.328L0.187,0.305L0.191,0.303L0.212,0.316L0.227,0.316L0.234,0.320L0.242,0.316L0.258,0.316L0.277,0.306L0.300,0.284L0.305,0.273L0.305,0.267L0.309,0.260L0.309,0.227L0.296,0.197L0.299,0.193L0.306,0.193L0.322,0.184L0.333,0.184L0.339,0.179L0.416,0.179L0.423,0.184L0.434,0.184L0.440,0.188L0.447,0.188L0.492,0.211L0.505,0.223L0.514,0.228L0.534,0.248L0.560,0.283L0.566,0.297L0.571,0.302L0.576,0.302L0.593,0.293L0.601,0.286L0.620,0.275L0.632,0.264L0.637,0.262L0.700,0.200L0.701,0.195L0.713,0.182L0.714,0.177L0.730,0.156L0.762,0.093L0.762,0.086L0.771,0.067L0.771,0.056ZM0.206,0.053L0.050,0.053L0.047,0.055L0.047,0.217L0.064,0.215L0.097,0.201L0.105,0.193L0.119,0.188L0.131,0.176L0.136,0.174L0.164,0.147L0.185,0.116L0.204,0.080L0.204,0.073L0.208,0.067L0.208,0.056ZM0.047,-0.204L0.047,-0.042L0.050,-0.040L0.206,-0.041L0.208,-0.044L0.208,-0.054L0.204,-0.061L0.204,-0.067L0.185,-0.104L0.164,-0.135L0.136,-0.162L0.131,-0.163L0.097,-0.188L0.064,-0.202ZM0.047,-0.767L0.047,-0.271L0.050,-0.269L0.060,-0.269L0.080,-0.260L0.091,-0.260L0.097,-0.256L0.104,-0.256L0.149,-0.233L0.158,-0.226L0.163,-0.224L0.179,-0.208L0.189,-0.203L0.209,-0.183L0.214,-0.174L0.230,-0.157L0.236,-0.143L0.243,-0.135L0.257,-0.107L0.257,-0.100L0.262,-0.094L0.262,-0.087L0.270,-0.067L0.270,-0.056L0.275,-0.050L0.275,-0.044L0.278,-0.040L0.768,-0.041L0.771,-0.044L0.771,-0.054L0.766,-0.061L0.762,-0.081L0.730,-0.144L0.723,-0.152L0.713,-0.170L0.697,-0.187L0.692,-0.196L0.646,-0.242L0.637,-0.247L0.624,-0.259L0.619,-0.260L0.607,-0.272L0.593,-0.278L0.576,-0.289L0.571,-0.289L0.566,-0.284L0.560,-0.270L0.534,-0.235L0.514,-0.215L0.505,-0.210L0.492,-0.199L0.447,-0.176L0.440,-0.176L0.434,-0.171L0.423,-0.171L0.416,-0.167L0.339,-0.167L0.333,-0.171L0.322,-0.171L0.306,-0.180L0.299,-0.181L0.296,-0.185L0.309,-0.215L0.309,-0.248L0.305,-0.254L0.305,-0.261L0.300,-0.271L0.277,-0.294L0.258,-0.303L0.242,-0.303L0.234,-0.308L0.227,-0.303L0.212,-0.303L0.191,-0.290L0.187,-0.293L0.177,-0.316L0.177,-0.322L0.173,-0.329L0.173,-0.349L0.168,-0.355L0.168,-0.393L0.173,-0.399L0.173,-0.419L0.177,-0.426L0.182,-0.445L0.200,-0.482L0.212,-0.500L0.254,-0.541L0.286,-0.560L0.293,-0.566L0.295,-0.571L0.288,-0.578L0.282,-0.592L0.275,-0.600L0.264,-0.618L0.253,-0.631L0.251,-0.636L0.193,-0.694L0.188,-0.695L0.176,-0.707L0.171,-0.708L0.149,-0.725L0.136,-0.730L0.127,-0.738L0.108,-0.747L0.102,-0.747L0.078,-0.760Z',
+    V: 'M0.637,0.093L0.640,0.096L0.640,0.111L0.630,0.130L0.616,0.144L0.607,0.149L0.594,0.161L0.566,0.175L0.560,0.175L0.553,0.179L0.547,0.179L0.527,0.188L0.516,0.188L0.509,0.193L0.498,0.193L0.492,0.197L0.459,0.197L0.452,0.201L0.422,0.202L0.416,0.208L0.402,0.236L0.402,0.242L0.398,0.249L0.398,0.260L0.393,0.267L0.392,0.287L0.385,0.278L0.385,0.270L0.352,0.237L0.333,0.228L0.318,0.228L0.311,0.223L0.300,0.223L0.294,0.228L0.278,0.228L0.272,0.232L0.265,0.232L0.247,0.245L0.234,0.257L0.223,0.274L0.222,0.282L0.218,0.289L0.218,0.339L0.232,0.367L0.246,0.382L0.264,0.395L0.272,0.396L0.281,0.402L0.252,0.404L0.245,0.408L0.234,0.408L0.219,0.417L0.212,0.417L0.202,0.422L0.192,0.432L0.191,0.480L0.187,0.486L0.187,0.506L0.182,0.513L0.182,0.524L0.178,0.530L0.178,0.541L0.174,0.548L0.169,0.568L0.151,0.604L0.138,0.622L0.111,0.645L0.103,0.645L0.096,0.650L0.089,0.649L0.086,0.646L0.087,0.336L0.098,0.330L0.118,0.325L0.155,0.307L0.163,0.300L0.177,0.294L0.189,0.282L0.194,0.281L0.207,0.269L0.216,0.264L0.249,0.231L0.254,0.221L0.270,0.204L0.272,0.199L0.288,0.178L0.298,0.155L0.305,0.147L0.306,0.139L0.319,0.115L0.319,0.108L0.325,0.098L0.331,0.092ZM0.089,-0.641L0.100,-0.642L0.119,-0.632L0.138,-0.614L0.151,-0.596L0.169,-0.560L0.169,-0.553L0.178,-0.533L0.178,-0.522L0.182,-0.516L0.182,-0.505L0.187,-0.498L0.187,-0.478L0.191,-0.472L0.192,-0.424L0.198,-0.418L0.226,-0.404L0.232,-0.404L0.239,-0.400L0.250,-0.400L0.256,-0.396L0.281,-0.394L0.251,-0.379L0.232,-0.359L0.230,-0.354L0.223,-0.346L0.222,-0.338L0.218,-0.331L0.218,-0.312L0.215,-0.307L0.218,-0.300L0.218,-0.281L0.227,-0.262L0.239,-0.249L0.240,-0.244L0.259,-0.229L0.278,-0.220L0.298,-0.220L0.305,-0.215L0.314,-0.220L0.333,-0.220L0.352,-0.229L0.377,-0.253L0.392,-0.284L0.393,-0.259L0.398,-0.252L0.398,-0.241L0.402,-0.234L0.402,-0.228L0.416,-0.200L0.422,-0.194L0.456,-0.193L0.463,-0.189L0.492,-0.189L0.498,-0.185L0.514,-0.185L0.520,-0.180L0.531,-0.180L0.538,-0.176L0.558,-0.171L0.594,-0.153L0.612,-0.141L0.630,-0.122L0.640,-0.103L0.640,-0.088L0.637,-0.085L0.331,-0.084L0.325,-0.090L0.324,-0.098L0.311,-0.122L0.311,-0.129L0.301,-0.148L0.294,-0.156L0.284,-0.179L0.276,-0.187L0.275,-0.192L0.259,-0.209L0.253,-0.218L0.212,-0.260L0.163,-0.295L0.118,-0.317L0.098,-0.322L0.087,-0.328L0.086,-0.638ZM0.001,-0.991L0.002,-0.979L0.007,-0.973L0.007,-0.962L0.011,-0.955L0.011,-0.949L0.015,-0.942L0.020,-0.922L0.042,-0.877L0.050,-0.869L0.069,-0.837L0.116,-0.790L0.138,-0.759L0.143,-0.749L0.143,-0.742L0.147,-0.736L0.147,-0.721L0.150,-0.715L0.149,-0.710L0.152,-0.704L0.149,-0.700L0.145,-0.700L0.137,-0.708L0.118,-0.717L0.089,-0.717L0.066,-0.704L0.051,-0.689L0.042,-0.670L0.042,-0.650L0.037,-0.643L0.037,-0.295L0.042,-0.290L0.061,-0.286L0.067,-0.281L0.078,-0.281L0.085,-0.277L0.092,-0.277L0.107,-0.268L0.114,-0.268L0.133,-0.259L0.141,-0.251L0.172,-0.232L0.189,-0.215L0.204,-0.205L0.210,-0.196L0.230,-0.174L0.232,-0.169L0.248,-0.148L0.270,-0.103L0.270,-0.096L0.275,-0.089L0.275,-0.083L0.284,-0.063L0.284,-0.048L0.290,-0.040L0.645,-0.040L0.652,-0.044L0.667,-0.044L0.686,-0.053L0.702,-0.068L0.711,-0.083L0.711,-0.089L0.715,-0.096L0.715,-0.116L0.711,-0.122L0.711,-0.129L0.700,-0.149L0.729,-0.149L0.761,-0.136L0.769,-0.128L0.788,-0.118L0.835,-0.070L0.879,-0.040L0.887,-0.040L0.897,-0.032L0.907,-0.026L0.914,-0.026L0.929,-0.018L0.936,-0.018L0.955,-0.009L0.966,-0.009L0.973,-0.004L0.988,-0.004L0.995,0.000L1.004,0.000L1.007,0.002L0.991,0.004L0.984,0.008L0.973,0.008L0.966,0.012L0.955,0.012L0.949,0.017L0.929,0.021L0.914,0.030L0.907,0.030L0.879,0.044L0.835,0.074L0.788,0.122L0.782,0.123L0.761,0.139L0.742,0.149L0.731,0.149L0.725,0.153L0.700,0.152L0.711,0.133L0.711,0.126L0.715,0.119L0.715,0.100L0.711,0.093L0.711,0.086L0.702,0.072L0.686,0.057L0.667,0.048L0.652,0.048L0.645,0.043L0.291,0.044L0.284,0.056L0.284,0.067L0.279,0.073L0.279,0.084L0.275,0.091L0.270,0.111L0.248,0.156L0.222,0.191L0.181,0.232L0.146,0.258L0.078,0.289L0.067,0.289L0.061,0.294L0.045,0.294L0.037,0.302L0.037,0.647L0.042,0.653L0.042,0.673L0.055,0.697L0.070,0.711L0.089,0.721L0.118,0.721L0.137,0.711L0.145,0.704L0.149,0.704L0.152,0.708L0.149,0.714L0.150,0.719L0.147,0.725L0.147,0.739L0.143,0.746L0.143,0.752L0.138,0.763L0.116,0.793L0.069,0.841L0.067,0.846L0.042,0.881L0.020,0.926L0.020,0.933L0.015,0.939L0.015,0.946L0.007,0.966L0.007,0.977L0.002,0.983L0.002,0.993L-0.000,0.995L-0.001,-0.989ZM0.207,0.044L0.045,0.043L0.038,0.050L0.037,0.207L0.044,0.215L0.061,0.211L0.067,0.207L0.074,0.207L0.102,0.193L0.127,0.172L0.133,0.171L0.157,0.147L0.162,0.138L0.174,0.125L0.196,0.089L0.196,0.082L0.205,0.067L0.205,0.056L0.210,0.048ZM0.040,-0.211L0.037,-0.207L0.038,-0.046L0.045,-0.040L0.207,-0.040L0.210,-0.045L0.205,-0.052L0.205,-0.063L0.196,-0.078L0.196,-0.085L0.184,-0.103L0.178,-0.117L0.162,-0.134L0.157,-0.144L0.133,-0.167L0.127,-0.168L0.102,-0.189L0.074,-0.203L0.067,-0.203L0.048,-0.212Z',
+  };
+  const whole = d => `<g fill="currentColor" fill-rule="evenodd"><path d="${d}"/><path transform="scale(-1,1)" d="${d}"/></g>`;
+
+
+  // Menu pictures, drawn for a 100 x 100 card in the two inks of the tiles.
+  const INK = '#17100d', PALE = '#ece9e3';
+  let cardN = 0;
+  // each card carries its own gradient and clip ids, so one hidden copy cannot blank the rest
+  const card = inner => { const n = ++cardN; return `<svg viewBox="0 0 100 100"><defs><radialGradient id="hx-parch${n}" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ecbb5c"/><stop offset="1" stop-color="#cf8f30"/></radialGradient><clipPath id="hx-clip${n}"><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z"/></clipPath></defs><rect width="100" height="100" rx="5" fill="#7a4a20"/><path d="M13,6 H87 A7,7 0 0 0 94,13 V87 A7,7 0 0 0 87,94 H13 A7,7 0 0 0 6,87 V13 A7,7 0 0 0 13,6 Z" fill="url(#hx-parch${n})"/><g clip-path="url(#hx-clip${n})">${inner}</g></svg>`; };
+  // One family: off-white shapes, 2.4 ink outlines, 5-wide ink trim bands.
+  const O = `stroke="${INK}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;
+  const bare = {}, card0 = card;
+  const cardKeep = (k, inner) => { bare[k] = `<svg viewBox="0 0 100 100">${inner}</svg>`; return card0(inner); };
+  const portraits = {
+    // zucchetto: a plain skullcap
+    novice: cardKeep('novice', `<g transform="translate(0,-3)"><path d="M19,68 C19,34 81,34 81,68 Q50,77 19,68 Z" fill="${PALE}" ${O}/>
+      <path d="M50,43 V66 M50,43 C40,48 33,55 31,65 M50,43 C60,48 67,55 69,65" fill="none" ${O}/>
+      <path d="M20.5,65 Q50,73.5 79.5,65" fill="none" stroke="${INK}" stroke-width="5"/>
+      <path d="M50,43 C45,34 55,34 50,43 Z" fill="${INK}" ${O}/></g>`),
+    // biretta: a square cap seen corner-on, with its three blades
+    deacon: cardKeep('deacon', `<path d="M20,46 L50,55 L80,46 L77,74 L50,84 L23,74 Z" fill="${PALE}" ${O}/>
+      <path d="M20,46 L50,37 L80,46 L50,55 Z" fill="${PALE}" ${O}/>
+      <path d="M50,46 L50,26 Q65,27 66,41.5 Z" fill="${PALE}" ${O}/>
+      <path d="M50,46 L50,26 Q34,28 34,50.5 Z" fill="${PALE}" ${O}/><path d="M50,46 L50,26 Q66,28 66,50.5 Z" fill="${PALE}" ${O}/>
+      <path d="M50,26 V46 M50,55 V84" fill="none" ${O}/>
+      <path d="M22.5,70 L50,80 L77.5,70" fill="none" stroke="${INK}" stroke-width="5" stroke-linejoin="miter"/>`),
+    // mitre, with lappets
+    abbot: cardKeep('abbot', `<path d="M36,62 L24,88 L33,91 L44,66 Z M64,62 L76,88 L67,91 L56,66 Z" fill="${INK}"/>
+      <path d="M26.5,84 L34.5,87 M73.5,84 L65.5,87" stroke="${PALE}" stroke-width="1.8"/>
+      <path d="M27,68 C22,46 37,26 50,10 C63,26 78,46 73,68 Q50,73 27,68 Z" fill="${PALE}" ${O}/>
+      <path d="M50,12 V70" stroke="${INK}" stroke-width="5"/><path d="M26.5,61 Q50,66 73.5,61" fill="none" stroke="${INK}" stroke-width="5"/>
+      <path d="M38,40 l4,7 l-4,7 l-4,-7 Z M62,40 l4,7 l-4,7 l-4,-7 Z" fill="none" ${O}/>`),
+    // a candle
+    two: cardKeep('two', `<path d="M25,81 H75 Q73,92 50,92 Q27,92 25,81 Z" fill="${INK}"/>
+      <path d="M40,46 H60 V81 H40 Z" fill="${PALE}" ${O}/>
+      <path d="M40,46 Q45,50 46,58 Q47,64 49.5,58 Q51,50 60,46 Z" fill="${INK}"/>
+      <path d="M50,46 V39" fill="none" ${O}/>
+      <path d="M50,11 C60,25 60,34 50,39 C40,34 40,25 50,11 Z" fill="${PALE}" ${O}/>
+      <path d="M50,24 C54.5,30 53.5,34 50,36 C46.5,34 45.5,30 50,24 Z" fill="${INK}"/>`),
+    book: cardKeep('book', `<path d="M9,32 L50,39 L91,32 L91,75 L50,82 L9,75 Z" fill="${INK}"/>
+      <path d="M13,27 Q33,21 50,33 L50,77 Q33,65 13,71 Z" fill="${PALE}" ${O}/><path d="M87,27 Q67,21 50,33 L50,77 Q67,65 87,71 Z" fill="${PALE}" ${O}/>
+      <g transform="translate(31,41) scale(9.5)" style="color:${INK}">${whole(HALF.V)}</g><g transform="translate(69,41) scale(11.5)" style="color:${INK}">${whole(HALF.C)}</g>
+      <path d="M20,58 Q32,54 43,61 M20,63.5 Q32,59.5 43,66.5 M80,58 Q68,54 57,61 M80,63.5 Q68,59.5 57,66.5" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M50,77 L46.5,93 L50,89 L53.5,93 Z" fill="${INK}"/>`),
+  };
+
+  // the two sides, as cards for the choosing screen
+  portraits.C = card(`<g transform="translate(50,50) scale(40)" style="color:${PALE}">${whole(HALF.C)}</g>`);
+  portraits.V = card(`<g transform="translate(50,50) scale(34)" style="color:${INK}">${whole(HALF.V)}</g>`);
+
+  // the heredox: half Veridican, half Castian, as on the old app icon; no card behind it
+  bare.heredox = `<svg viewBox="10 10 80 80"><g transform="translate(50,50) scale(38)"><path transform="scale(-1,1)" fill="${INK}" fill-rule="evenodd" d="${HALF.V}"/><path fill="${PALE}" fill-rule="evenodd" d="${HALF.C}"/></g></svg>`;
+
+  root.HeredoxSkin = {
+    name: 'classic',
+    portraits,
+    pulse: '#c0281c',   // the colour a side's held symbols pulse when it has just played
+    // the heredox inscribed in the page: half paths (unit radius) and the two tones the gradients run between
+    emblem: { v: HALF.V, c: HALF.C, dark: '#120c09', light: '#3d2b1e' },
+    hats: bare,   // the same drawings without the card behind them
+    // unit-size drawings centred on the origin, radius about 1, using currentColor
+    symbols: {
+      1: { color: '#ece9e3', art: whole(HALF.C) },
+      2: { color: '#17100d', art: whole(HALF.V) },
+    },
+    words: {
+      title: 'Heredox',
+      names: { C: 'Castian', V: 'Veridican' },
+      levels: { novice: 'Novice', deacon: 'Deacon', abbot: 'Abbot' },
+      twoPlayers: 'Two players',
+      variants: { single: 'One tile', two: 'Two tiles', three: 'Three tiles' },
+      howToPlay: 'How to play',
+      hint: 'Hint',
+      menu: 'Menu',
+      you: 'you',
+      yourMove: 'Your move',
+      thinking: n => `${n}\u2019s move`,
+      toMove: n => `${n}\u2019s move`,
+      youWin: 'You win',
+      youLose: 'You lose',
+      wins: n => `${n} wins`,
+      playAgain: 'Play again',
+      chooseSide: 'Choose your side',
+      tutor: 'Tutor mode',
+      sideNotes: { V: ['the old doctrine', 'moves first'], C: ['the new doctrine', 'moves second'] },
+      summary: (v, c, k) => `Veridican holds ${v}, Castian ${c}; ${k} ${k === 1 ? 'remains' : 'remain'} split.` + (v === c ? ' Level, so the old doctrine stands.' : ''),
+      tilesLeft: n => (n === 0 ? 'No more tiles' : n === 1 ? '1 tile to come' : `${n} tiles to come`),
+      rules: [
+        'Veridican is the old doctrine and Castian the new. This floor remembers the schism between them, diocese by diocese.',
+        'Take turns laying tiles, Veridican first, each beside a tile already down, until they make a four by four square. There are always three tiles to choose from: place whichever you like, and the other two stay for your opponent.',
+        'Where two halves of the same symbol meet, that doctrine holds the diocese. Where the two doctrines meet, the diocese stays split: a heredox. Whoever holds more dioceses wins. If they are level, the old doctrine stands.',
+        'Tap a tile to turn it. Drag it onto the floor to place it.',
+      ],
+      // the one-tile game, off the menu for now
+      rulesSingle: 'Each turn you draw one tile and must place it.',
+    },
+  };
+})(self);
