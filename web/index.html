@@ -36,8 +36,9 @@
   .float.mine { cursor: grab; }
   .float.dragging { transition: none; z-index: 9; }
   .float.dragging .face { box-shadow: inset 0 0 0 1px var(--tile-edge), 0 10px 22px rgba(0,0,0,.55); }
-  .float { transition: left .45s ease, top .45s ease, transform .2s ease; }
-  .float.intray { transform: scale(var(--tk, 1)); }
+  /* tray tiles are sized, not scaled: a fractional scale inside the turned stage left hairline seams on iOS */
+  .float { transition: left .45s ease, top .45s ease, width .2s ease, height .2s ease, margin .2s ease, padding .2s ease; }
+  .float.intray { width: var(--ts); height: var(--ts); padding: calc(var(--ts) * .015); margin: calc(var(--ts) * -.5) 0 0 calc(var(--ts) * -.5); }
   .float.arrive { animation: arrive .45s ease; }
   @keyframes arrive { from { opacity: 0; } to { opacity: 1; } }
   .ghost { z-index: 4; pointer-events: none; opacity: .0; animation: ghost 2.6s ease forwards; }

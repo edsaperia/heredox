@@ -70,7 +70,7 @@
     stage.style.setProperty('--s', L.s + 'px');
     // tiles in the tray shrink if that is what it takes to fit them side by side
     const k = game ? game.choice : 3;
-    L.ts = Math.min(L.s, (side * 0.9) / (k * 1.07 + 0.1));
+    L.ts = Math.floor(Math.min(L.s, (side * 0.9) / (k * 1.07 + 0.1)));
     stage.style.setProperty('--ts', L.ts + 'px');
     stage.style.setProperty('--tk', L.ts / L.s);
     stage.style.setProperty('--pulse', S.pulse);
