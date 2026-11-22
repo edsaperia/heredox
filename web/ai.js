@@ -306,7 +306,8 @@
   // exactUnplaced: the same for the game with several tiles to choose from.
   const LEVELS = {
     novice: { exactFrom: 0, early: greedy, exactUnplaced: 0, early2: greedy2 },
-    deacon: { exactFrom: 4, early: greedy, exactUnplaced: 3, early2: greedy2 },
+    // Deacon is the trained player with lapses: on `slip` of its early turns it takes the greedy move instead.
+    deacon: { exactFrom: 4, early: greedy, exactUnplaced: 3, early2: greedy2, net: true, slip: 0.4 },
     abbot: { exactFrom: 6, early: lookahead, exactUnplaced: 5, early2: lookahead2, net: true },   // uses the trained net when one is loaded
   };
   const solver = new Solver(), solver2 = new Solver2();
@@ -324,7 +325,7 @@
         if (solver2.memo.size > 400000) solver2.memo.clear();
         const b = solver2.best(s, hand).move;
         m = { x: b[0], y: b[1], r: b[2], w: b[3] };
-      } else if (L.net && NET && NET.choice === game.choice) m = netMove(s, hand);
+      } else if (L.net && NET && NET.choice === game.choice && !(L.slip && rand() < L.slip)) m = netMove(s, hand);
       else m = L.early2(s, hand, rand);
       return [m.x + s.ox, m.y + s.oy, m.r, m.w];
     }
