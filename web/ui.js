@@ -169,7 +169,10 @@
     });
     // one dot for each tile still to come
     const nl = game ? game.stackLeft : 0, lf = $('left');
-    if (lf.childElementCount !== nl) lf.innerHTML = '<i></i>'.repeat(nl);
+    // a fixed place for every tile that starts in the stack, so the row spans the side bar and empties from the right
+    const slots = 16 - (game ? game.choice : 3);
+    if (lf.childElementCount !== slots) lf.innerHTML = '<i></i>'.repeat(slots);
+    [...lf.children].forEach((d, i) => d.classList.toggle('gone', i >= nl));
     lf.setAttribute('aria-label', W.tilesLeft(nl));
     let st = '';
     if (game && !game.over) {
