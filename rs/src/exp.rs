@@ -16,11 +16,11 @@
 //! instead of two (two are left for the opponent, who draws one more).
 //! Results are appended to exp.log.
 use heredox::pos::{Fx, Rng, State};
-use heredox::two::{mover_is_first, placed, put, swap_ab, Move, NONE};
+use heredox::two::{placed, put, swap_ab, Move, NONE};
 use heredox::{rotate, DIRS, DISTINCT_ROTATIONS, TILES};
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -35,9 +35,42 @@ static LEVEL_TO_SECOND: AtomicBool = AtomicBool::new(false);
 /// How many tiles there are to choose from each turn (2 in today's game).
 static CHOICE: AtomicUsize = AtomicUsize::new(2);
 
+/// A neutral tile is on the table before the first player moves.
+static SEED: AtomicBool = AtomicBool::new(false);
+/// The tile set: how many of each kind A, B, D, E, F.
+static DECK: [AtomicU8; 5] = [AtomicU8::new(3), AtomicU8::new(3), AtomicU8::new(2), AtomicU8::new(4), AtomicU8::new(4)];
+
+/// Is the player to move the one who made the game's first move?
+fn first_to_move(s: &State) -> bool {
+    (placed(s) + SEED.load(Ordering::Relaxed) as u32) % 2 == 0
+}
 /// Does the player to move win a finished game?
 fn mover_wins(s: &State) -> bool {
-    s.diff > 0 || (s.diff == 0 && (mover_is_first(s) != LEVEL_TO_SECOND.load(Ordering::Relaxed)))
+    s.diff > 0 || (s.diff == 0 && (first_to_move(s) != LEVEL_TO_SECOND.load(Ordering::Relaxed)))
+}
+/// Did the first player win a finished game?
+fn first_won(s: &State) -> bool {
+    mover_wins(s) == first_to_move(s)
+}
+/// The position the first player faces.
+fn start_pos(rng: &mut Rng) -> Pos {
+    let mut s = State::start();
+    for t in 0..5 {
+        s.counts[t] = DECK[t].load(Ordering::Relaxed);
+    }
+    if SEED.load(Ordering::Relaxed) {
+        // a random tile from the stack, laid by nobody. `place` hands the view
+        // to "the next player", which only renames the two symbols; the tile
+        // set is the same under that renaming, so nothing is biased.
+        let mut k = rng.below(s.remaining() as usize) as u8;
+        let mut t = 0;
+        while k >= s.counts[t] {
+            k -= s.counts[t];
+            t += 1;
+        }
+        s = s.place(t, 0, 0, 0);
+    }
+    Pos { s, h: [NONE, NONE, NONE], rn: false, ra: false }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -51,7 +84,7 @@ enum Rule {
 #[derive(Clone, Copy)]
 pub struct Pos {
     s: State,
-    h: [u8; 2], // tiles left for the mover, sorted, NONE where there is none
+    h: [u8; 3], // tiles left for the mover, sorted, NONE where there is none
     rn: bool, // the mover has no choice this turn
     ra: bool, // the player after the mover will have no choice
 }
@@ -60,6 +93,7 @@ fn features(p: &Pos, out: &mut [f32; NF]) {
     let mut base = [0f32; heredox::two::NF];
     heredox::two::features(&p.s, NONE, &mut base);
     out[..166].copy_from_slice(&base);
+    out[165] = if first_to_move(&p.s) { 1.0 } else { 0.0 };
     // slots 152..157: how many of each kind are left for the mover; 157: none are
     out[157] = if p.h[0] == NONE { 1.0 } else { 0.0 };
     for &t in p.h.iter().filter(|&&t| t != NONE) {
@@ -213,9 +247,10 @@ fn made_split(s: &State, t: u8, r: u8, x: i32, y: i32) -> bool {
 fn left_of(p: &Pos) -> Vec<u8> {
     p.h.iter().copied().filter(|&t| t != NONE).collect()
 }
-fn pack_left(mut v: Vec<u8>) -> [u8; 2] {
+fn pack_left(mut v: Vec<u8>) -> [u8; 3] {
+    assert!(v.len() <= 3);
     v.sort();
-    [v.first().copied().unwrap_or(NONE), v.get(1).copied().unwrap_or(NONE)]
+    [v.first().copied().unwrap_or(NONE), v.get(1).copied().unwrap_or(NONE), v.get(2).copied().unwrap_or(NONE)]
 }
 
 /// Every way the mover's tiles can turn out: (probability, stack after, hand).
@@ -284,8 +319,8 @@ fn options(s: &State, hand: &[u8], ra_in: bool, rule: Rule) -> Vec<(Move, Pos, b
 }
 
 fn key(p: &Pos) -> (u64, u32, u16) {
-    let flags = (p.rn as u16) << 8 | (p.ra as u16) << 9;
-    let code = |h: [u8; 2]| h[0] as u16 | (h[1] as u16) << 4 | flags;
+    let flags = (p.rn as u16) << 12 | (p.ra as u16) << 13;
+    let code = |h: [u8; 3]| h[0] as u16 | (h[1] as u16) << 4 | (h[2] as u16) << 8 | flags;
     let mirrored = pack_left(left_of(p).iter().map(|&t| swap_ab(t)).collect());
     let mut best = (u64::MAX, u32::MAX, u16::MAX);
     let mut t = p.s;
@@ -373,7 +408,7 @@ struct Sample {
 
 fn selfplay(net: &Net, solver: &mut Solver, rng: &mut Rng, eps: f64, lambda: f64, out: &mut Vec<Sample>) {
     let rule = solver.rule;
-    let mut pos = Pos { s: State::start(), h: [NONE, NONE], rn: false, ra: false };
+    let mut pos = start_pos(rng);
     let mut recs: Vec<(Pos, f64, bool)> = Vec::new();
     let last_y;
     loop {
@@ -455,7 +490,7 @@ fn count_joins(s: &State) -> (usize, usize) {
 /// The net against itself, greedy, exact at the end.
 fn play(net: &Net, solver: &mut Solver, rng: &mut Rng, t: &mut Tally) {
     let rule = solver.rule;
-    let mut pos = Pos { s: State::start(), h: [NONE, NONE], rn: false, ra: false };
+    let mut pos = start_pos(rng);
     loop {
         let (s, hand) = match sample(&pos, rng) {
             Some(x) => x,
@@ -483,8 +518,7 @@ fn play(net: &Net, solver: &mut Solver, rng: &mut Rng, t: &mut Tally) {
         }
         pos = child;
     }
-    // board full: the view is the first player's
-    if mover_wins(&pos.s) {
+    if first_won(&pos.s) {
         t.first_wins += 1;
     }
     if pos.s.diff == 0 {
@@ -494,6 +528,70 @@ fn play(net: &Net, solver: &mut Solver, rng: &mut Rng, t: &mut Tally) {
     let (held, split) = count_joins(&pos.s);
     t.symbols += held;
     t.splits_at_end += split;
+}
+
+/// The trained player against one that just takes the best immediate gain.
+/// Returns true if the trained player wins.
+fn play_vs_greedy(net: &Net, solver: &mut Solver, rng: &mut Rng, net_first: bool) -> bool {
+    let rule = solver.rule;
+    let mut pos = start_pos(rng);
+    loop {
+        let (s, hand) = match sample(&pos, rng) {
+            Some(x) => x,
+            None => break,
+        };
+        let opts = options(&s, &hand, pos.ra, rule);
+        let net_turn = first_to_move(&s) == net_first;
+        pos = if !net_turn {
+            let gain = |c: &Pos| -(c.s.diff as i32) - s.diff as i32;
+            let top = opts.iter().map(|o| gain(&o.1)).max().unwrap();
+            let best: Vec<&(Move, Pos, bool)> = opts.iter().filter(|o| gain(&o.1) == top).collect();
+            best[rng.below(best.len())].1
+        } else if 16 - placed(&s) <= EXACT_UNPLACED && s.mask != 0 {
+            solver.best(&s, &hand, pos.ra).2
+        } else {
+            let mut best = (-1.0, 0);
+            for (i, (_, c, _)) in opts.iter().enumerate() {
+                let q = 1.0 - net.value(c) as f64;
+                if q > best.0 {
+                    best = (q, i);
+                }
+            }
+            opts[best.1].1
+        };
+    }
+    first_won(&pos.s) == net_first
+}
+/// (wins of 1 as first player, wins of 1 as second player) per `n` games each.
+fn greedy_tally(net: &Arc<Net>, rule: Rule, threads: usize, n: usize) -> (usize, usize, usize) {
+    let per = (n + threads - 1) / threads;
+    let mut tot = (0, 0);
+    std::thread::scope(|sc| {
+        let hs: Vec<_> = (0..threads)
+            .map(|i| {
+                let net = Arc::clone(net);
+                sc.spawn(move || {
+                    let mut rng = Rng(seed(9000 + i as u64));
+                    let mut solver = Solver::new(rule);
+                    let (mut a, mut b) = (0, 0);
+                    for _ in 0..per {
+                        a += play_vs_greedy(&net, &mut solver, &mut rng, true) as usize;
+                        b += play_vs_greedy(&net, &mut solver, &mut rng, false) as usize;
+                        if solver.memo.len() > 3_000_000 {
+                            solver.memo.clear();
+                        }
+                    }
+                    (a, b)
+                })
+            })
+            .collect();
+        for h in hs {
+            let (a, b) = h.join().unwrap();
+            tot.0 += a;
+            tot.1 += b;
+        }
+    });
+    (tot.0, tot.1, per * threads)
 }
 
 fn self_play_tally(net: &Arc<Net>, rule: Rule, threads: usize, eval_games: usize) -> Tally {
@@ -531,11 +629,23 @@ fn self_play_tally(net: &Arc<Net>, rule: Rule, threads: usize, eval_games: usize
     total
 }
 
+fn variant_label() -> String {
+    let mut v = String::new();
+    v += match CHOICE.load(Ordering::Relaxed) { 1 => " (one tile)", 3 => " (three tiles)", 4 => " (four tiles)", _ => " (two tiles)" };
+    if SEED.load(Ordering::Relaxed) {
+        v += " (starting tile)";
+    }
+    let d: Vec<u8> = DECK.iter().map(|a| a.load(Ordering::Relaxed)).collect();
+    if d != [3, 3, 2, 4, 4] {
+        v += &format!(" (tile set {}-{}-{}-{}-{})", d[0], d[1], d[2], d[3], d[4]);
+    }
+    v
+}
 fn report(rule: Rule, games: u64, hours: f64, t: &Tally) -> String {
     let n = t.games as f64;
     format!(
         "{:?}{}{} {:5.2} h {:8} training games | self-play {} games: Veridican (first) wins {:.1}%, level {:.1}% | per game: {:.1} moves split a diocese, {:.1} turns with no choice, {:.1} held, {:.1} split",
-        rule, match CHOICE.load(Ordering::Relaxed) { 3 => " (three tiles)", 4 => " (four tiles)", _ => "" },
+        rule, variant_label(),
         if LEVEL_TO_SECOND.load(Ordering::Relaxed) { " (level games to Castian)" } else { "" }, hours, games, t.games,
         100.0 * t.first_wins as f64 / n, 100.0 * t.level as f64 / n, t.split_moves as f64 / n, t.forced_turns as f64 / n, t.symbols as f64 / n, t.splits_at_end as f64 / n
     )
@@ -563,7 +673,7 @@ fn main() {
                 let mut worst: f64 = 0.0;
                 for _ in 0..40 {
                     // random play down to four unplaced tiles, then compare memo with plain search
-                    let mut pos = Pos { s: State::start(), h: [NONE, NONE], rn: false, ra: false };
+                    let mut pos = start_pos(&mut rng);
                     while 16 - placed(&pos.s) > 4 {
                         psum = psum.max((deal(&pos).iter().map(|o| o.0).sum::<f64>() - 1.0).abs());
                         let (s, hand) = sample(&pos, &mut rng).unwrap();
@@ -595,7 +705,11 @@ fn main() {
     for a in args.iter().skip(5) {
         match a.as_str() {
             "castian" => LEVEL_TO_SECOND.store(true, Ordering::Relaxed),
+            "one" => CHOICE.store(1, Ordering::Relaxed),
             "three" => CHOICE.store(3, Ordering::Relaxed),
+            "seed" => SEED.store(true, Ordering::Relaxed),
+            "sparse" => [4u8, 4, 4, 2, 2].iter().enumerate().for_each(|(i, &c)| DECK[i].store(c, Ordering::Relaxed)),
+            "dense" => [2u8, 2, 0, 6, 6].iter().enumerate().for_each(|(i, &c)| DECK[i].store(c, Ordering::Relaxed)),
             "four" => CHOICE.store(4, Ordering::Relaxed),
             _ => {}
         }
@@ -677,6 +791,11 @@ fn main() {
             net.set_flat(&flat);
         }
     }
-    let total = self_play_tally(&Arc::new(net), rule, threads, eval_games);
-    log(&format!("FINAL {}", report(rule, games, t0.elapsed().as_secs_f64() / 3600.0, &total)));
+    let net = Arc::new(net);
+    let total = self_play_tally(&net, rule, threads, eval_games);
+    let (ga, gb, gn) = greedy_tally(&net, rule, threads, 2000);
+    log(&format!(
+        "FINAL {} | trained player beats a greedy one {:.1}% as Veridican, {:.1}% as Castian",
+        report(rule, games, t0.elapsed().as_secs_f64() / 3600.0, &total), 100.0 * ga as f64 / gn as f64, 100.0 * gb as f64 / gn as f64
+    ));
 }
