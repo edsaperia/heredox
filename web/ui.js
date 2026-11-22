@@ -167,7 +167,10 @@
       }
       row.classList.toggle('turn', !!game && !game.over && game.toMove === p);
     });
-    $('left').textContent = W.tilesLeft(game ? game.stackLeft : 16);
+    // one dot for each tile still to come
+    const nl = game ? game.stackLeft : 0, lf = $('left');
+    if (lf.childElementCount !== nl) lf.innerHTML = '<i></i>'.repeat(nl);
+    lf.setAttribute('aria-label', W.tilesLeft(nl));
     let st = '';
     if (game && !game.over) {
       const p = game.toMove;
