@@ -10,12 +10,10 @@ let worst = 0, n = 0;
 for (const line of fs.readFileSync(process.argv[3], 'utf8').split('\n')) {
   if (!line.trim()) continue;
   const p = JSON.parse(line);
-  const placed = p.cells.filter(c => c).length, moverFirst = placed % 2 === 0;
-  const a = { mask: p.mask, cells: p.cells, counts: p.counts, diff: p.diff, mover: 1, first: moverFirst ? 1 : 2 };
+  const a = { mask: p.mask, cells: p.cells, counts: p.counts, diff: p.diff, mover: 1, first: p.first ? 1 : 2 };
   const c = p.counts.slice(); [c[0], c[1]] = [c[1], c[0]];
-  const b = { mask: p.mask, cells: p.cells.map(e => e && e.map(sw)), counts: c, diff: -p.diff, mover: 2, first: moverFirst ? 2 : 1 };
-  const h = p.h === 9 ? -1 : p.h;
-  worst = Math.max(worst, Math.abs(AI.netValue(a, h) - p.v), Math.abs(AI.netValue(b, h < 0 ? -1 : ab(h)) - p.v));
+  const b = { mask: p.mask, cells: p.cells.map(e => e && e.map(sw)), counts: c, diff: -p.diff, mover: 2, first: p.first ? 2 : 1 };
+  worst = Math.max(worst, Math.abs(AI.netValue(a, p.left) - p.v), Math.abs(AI.netValue(b, p.left.map(ab)) - p.v));
   n++;
 }
 console.log(`${n} positions, net value against Rust: largest disagreement ${worst.toExponential(2)}`);

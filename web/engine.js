@@ -12,6 +12,7 @@
   const COUNTS = { A: 3, B: 3, D: 2, E: 4, F: 4 };
   const DISTINCT_ROTATIONS = { A: 4, B: 4, D: 4, E: 4, F: 2 };
   const FULL_DECK = 'AAABBBDDEEEEFFFF';
+  const CHOICES = { single: 1, two: 2, three: 3 };   // tiles to choose from each turn
   const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // top, right, bottom, left
 
   function rotate(e, r) {
@@ -30,9 +31,10 @@
 
   class Game {
     // variant 'single': draw one tile, place it.
-    // variant 'two': two in hand. The first player draws two; each turn you
-    // place one tile and hand the other over, and your opponent draws one
-    // more. hand[0] is the tile you were handed, hand[1] the one you drew.
+    // variants 'two' and 'three': that many tiles to choose from. The first
+    // player draws them; each turn you place one, the rest stay for your
+    // opponent, and one more is drawn while the stack lasts. Tiles left for
+    // you come first in hand, the newly drawn one last.
     constructor(deck, first, variant) {
       if (deck.split('').sort().join('') !== FULL_DECK) throw new Error('deck must be the 16 tiles');
       this.deck = deck;
@@ -40,8 +42,10 @@
       this.variant = variant || 'single';
       this.board = new Map(); // "x,y" -> {x, y, e, type, r}
       this.moves = [];
-      if (this.variant === 'two') { this.hand = [deck[0], deck[1]]; this.pos = 2; }
-      else { this.hand = [deck[0]]; this.pos = 1; }
+      this.choice = CHOICES[this.variant];
+      if (!this.choice) throw new Error('unknown variant');
+      this.hand = deck.slice(0, this.choice).split('');
+      this.pos = this.choice;
     }
     get stackLeft() { return 16 - this.pos; }
     get turn() { return this.moves.length; }
@@ -141,7 +145,7 @@
     }
   }
 
-  const api = { BLANK, C, V, TYPES, TILES, COUNTS, DISTINCT_ROTATIONS, FULL_DECK, DIRS, rotate, shuffledDeck, Game };
+  const api = { BLANK, C, V, TYPES, TILES, COUNTS, DISTINCT_ROTATIONS, FULL_DECK, CHOICES, DIRS, rotate, shuffledDeck, Game };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Heredox = api;
 })(typeof self !== 'undefined' ? self : this);

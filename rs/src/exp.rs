@@ -20,7 +20,7 @@ use heredox::two::{placed, put, swap_ab, Move, NONE};
 use heredox::{rotate, DIRS, DISTINCT_ROTATIONS, TILES};
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -28,7 +28,10 @@ const NF: usize = 168;
 const H1: usize = 128;
 const H2: usize = 64;
 /// Play is exact once this few tiles remain unplaced.
-const EXACT_UNPLACED: u32 = 5;
+static EXACT: AtomicU32 = AtomicU32::new(5);
+fn exact_unplaced() -> u32 {
+    EXACT.load(Ordering::Relaxed)
+}
 /// Level games go to the first player (Veridican) unless this is set.
 static LEVEL_TO_SECOND: AtomicBool = AtomicBool::new(false);
 
@@ -428,7 +431,7 @@ fn selfplay(net: &Net, solver: &mut Solver, rng: &mut Rng, eps: f64, lambda: f64
         }
         let child = opts[pick].1;
         recs.push((child, top, pick != best));
-        if 16 - placed(&child.s) <= EXACT_UNPLACED {
+        if 16 - placed(&child.s) <= exact_unplaced() {
             last_y = solver.solve(&child);
             break;
         }
@@ -499,7 +502,7 @@ fn play(net: &Net, solver: &mut Solver, rng: &mut Rng, t: &mut Tally) {
         if pos.rn && 16 - placed(&s) > 1 {
             t.forced_turns += 1;
         }
-        let (child, split) = if 16 - placed(&s) <= EXACT_UNPLACED && s.mask != 0 {
+        let (child, split) = if 16 - placed(&s) <= exact_unplaced() && s.mask != 0 {
             let b = solver.best(&s, &hand, pos.ra);
             (b.2, b.3)
         } else {
@@ -547,7 +550,7 @@ fn play_vs_greedy(net: &Net, solver: &mut Solver, rng: &mut Rng, net_first: bool
             let top = opts.iter().map(|o| gain(&o.1)).max().unwrap();
             let best: Vec<&(Move, Pos, bool)> = opts.iter().filter(|o| gain(&o.1) == top).collect();
             best[rng.below(best.len())].1
-        } else if 16 - placed(&s) <= EXACT_UNPLACED && s.mask != 0 {
+        } else if 16 - placed(&s) <= exact_unplaced() && s.mask != 0 {
             solver.best(&s, &hand, pos.ra).2
         } else {
             let mut best = (-1.0, 0);
@@ -650,6 +653,50 @@ fn report(rule: Rule, games: u64, hours: f64, t: &Tally) -> String {
         100.0 * t.first_wins as f64 / n, 100.0 * t.level as f64 / n, t.split_moves as f64 / n, t.forced_turns as f64 / n, t.symbols as f64 / n, t.splits_at_end as f64 / n
     )
 }
+fn pos_json(p: &Pos) -> String {
+    let s = &p.s;
+    let cells: Vec<String> = (0..16)
+        .map(|i| {
+            if s.mask >> i & 1 == 1 {
+                let c = s.cells[i];
+                format!("[{},{},{},{}]", c & 3, c >> 2 & 3, c >> 4 & 3, c >> 6 & 3)
+            } else {
+                "null".to_string()
+            }
+        })
+        .collect();
+    let left: Vec<String> = left_of(p).iter().map(|t| t.to_string()).collect();
+    format!(
+        "\"mask\":{},\"cells\":[{}],\"counts\":[{},{},{},{},{}],\"diff\":{},\"left\":[{}],\"first\":{}",
+        s.mask, cells.join(","), s.counts[0], s.counts[1], s.counts[2], s.counts[3], s.counts[4], s.diff, left.join(","), first_to_move(s)
+    )
+}
+/// Write the net for the web game, and positions with its values for checking the JavaScript port.
+fn save_net(net: &Net, games: u64, rule: Rule) {
+    let nums: Vec<String> = net.flat().iter().map(|v| format!("{:.5}", v)).collect();
+    let json = format!(
+        "{{\"nf\":{},\"h1\":{},\"h2\":{},\"choice\":{},\"exact\":{},\"games\":{},\"w\":[{}]}}\n",
+        NF, H1, H2, CHOICE.load(Ordering::Relaxed), exact_unplaced(), games, nums.join(",")
+    );
+    std::fs::write("net.json.tmp", json).unwrap();
+    std::fs::rename("net.json.tmp", "net.json").unwrap();
+    let mut rng = Rng(2468);
+    let mut out = String::new();
+    for i in 0..200 {
+        let mut pos = start_pos(&mut rng);
+        let stop = 5 + (i % 9) as u32;
+        loop {
+            let (st, hand) = sample(&pos, &mut rng).unwrap();
+            let opts = options(&st, &hand, pos.ra, rule);
+            pos = opts[rng.below(opts.len())].1;
+            if 16 - placed(&pos.s) <= stop {
+                break;
+            }
+        }
+        out += &format!("{{{},\"v\":{:.7}}}\n", pos_json(&pos), net.value(&pos));
+    }
+    std::fs::write("net-check.jsonl", out).unwrap();
+}
 fn log(line: &str) {
     use std::io::Write;
     println!("{}", line);
@@ -664,6 +711,25 @@ fn main() {
         Some("none") => Rule::None,
         Some("reward") => Rule::Reward,
         Some("cost") => Rule::Cost,
+        Some("dump") => {
+            // exp dump <n> [three]: positions with at most four tiles unplaced, with exact values
+            if args.iter().any(|a| a == "three") {
+                CHOICE.store(3, Ordering::Relaxed);
+            }
+            let n: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(50);
+            let mut rng = Rng(1357);
+            let mut solver = Solver::new(Rule::None);
+            for i in 0..n {
+                let mut pos = start_pos(&mut rng);
+                while 16 - placed(&pos.s) > 1 + (i % 4) as u32 {
+                    let (st, hand) = sample(&pos, &mut rng).unwrap();
+                    let opts = options(&st, &hand, pos.ra, Rule::None);
+                    pos = opts[rng.below(opts.len())].1;
+                }
+                println!("{{{},\"v\":{:.12}}}", pos_json(&pos), solver.solve(&pos));
+            }
+            return;
+        }
         Some("selfcheck") => {
             for (rule, choice) in [(Rule::None, 2), (Rule::Reward, 2), (Rule::Cost, 2), (Rule::None, 3), (Rule::Cost, 3)] {
                 CHOICE.store(choice, Ordering::Relaxed);
@@ -702,9 +768,12 @@ fn main() {
     let minutes: f64 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(5.0);
     let threads: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(2);
     let eval_games: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(2000);
+    let mut save = false;
     for a in args.iter().skip(5) {
         match a.as_str() {
             "castian" => LEVEL_TO_SECOND.store(true, Ordering::Relaxed),
+            "exact4" => EXACT.store(4, Ordering::Relaxed),
+            "save" => save = true,
             "one" => CHOICE.store(1, Ordering::Relaxed),
             "three" => CHOICE.store(3, Ordering::Relaxed),
             "seed" => SEED.store(true, Ordering::Relaxed),
@@ -732,6 +801,9 @@ fn main() {
             next_check += 0.125;
             let t = self_play_tally(&Arc::new(net.clone()), rule, threads, (eval_games / 10).max(100));
             log(&format!("      {}", report(rule, games, t0.elapsed().as_secs_f64() / 3600.0, &t)));
+            if save {
+                save_net(&net, games, rule);
+            }
         }
         let eps = 0.15 - 0.10 * frac;
         let lr = if frac < 0.5 { 1e-3 } else if frac < 0.85 { 3e-4 } else { 1e-4 };
@@ -790,6 +862,9 @@ fn main() {
             }
             net.set_flat(&flat);
         }
+    }
+    if save {
+        save_net(&net, games, rule);
     }
     let net = Arc::new(net);
     let total = self_play_tally(&net, rule, threads, eval_games);

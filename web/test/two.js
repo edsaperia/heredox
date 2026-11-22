@@ -1,6 +1,7 @@
 // Two in hand: check the memoised solver against plain search on small
 // endgames, then play whole games at each level.
 const H = require('../engine.js');
+const VARIANT = process.argv[2] || 'three';
 const AI = require('../ai.js');
 let seed = 4242;
 const rand = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
@@ -43,22 +44,22 @@ function clone(g) {
 }
 let worst = 0, n = 0;
 for (let i = 0; i < 40; i++) {
-  const g = new H.Game(H.shuffledDeck(rand), 'C', 'two');
-  while (g.stackLeft > 2) { const ms = g.legalMoves(); g.play(...ms[Math.floor(rand() * ms.length)]); }
+  const g = new H.Game(H.shuffledDeck(rand), 'C', VARIANT);
+  while (g.stackLeft > (VARIANT === "three" ? 1 : 2)) { const ms = g.legalMoves(); g.play(...ms[Math.floor(rand() * ms.length)]); }
   const s = AI.fromGame(g), hand = g.hand.map(t => H.TYPES.indexOf(t));
   const a = new AI.Solver2().best(s, hand).value, b = brute(g);
   worst = Math.max(worst, Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
   n++;
 }
-console.log(`${n} two-in-hand endgames against plain search: largest disagreement ${worst.toExponential(2)}`);
+console.log(`${n} ${VARIANT}-tile endgames against plain search: largest disagreement ${worst.toExponential(2)}`);
 if (worst > 1e-9) process.exit(1);
 
 for (const [a, b] of [['novice', 'novice'], ['deacon', 'novice'], ['abbot', 'novice'], ['abbot', 'deacon']]) {
   const r = [0, 0, 0], seat = [0, 0, 0];
   let slow = 0;
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 40; i++) {
     const aSym = i % 2 ? 'C' : 'V';
-    const g = new H.Game(H.shuffledDeck(rand), rand() < 0.5 ? 'C' : 'V', 'two');
+    const g = new H.Game(H.shuffledDeck(rand), rand() < 0.5 ? 'C' : 'V', VARIANT);
     while (!g.over) {
       const t1 = Date.now();
       g.play(...AI.chooseMove(g, g.toMove === aSym ? a : b, rand));

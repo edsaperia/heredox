@@ -14,6 +14,8 @@ TILES = {
 COUNTS = {"A": 3, "B": 3, "D": 2, "E": 4, "F": 4}
 DISTINCT_ROTATIONS = {"A": 4, "B": 4, "D": 4, "E": 4, "F": 2}
 FULL_DECK = "".join(t * n for t, n in COUNTS.items())
+# tiles to choose from each turn
+CHOICES = {"single": 1, "two": 2, "three": 3}
 
 # top, right, bottom, left; y increases downwards
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
@@ -32,26 +34,24 @@ def shuffled_deck(rng):
 
 class Game:
     """variant "single": draw one tile, place it.
-    variant "two": two in hand. The first player draws two; each turn you
-    place one of your tiles and hand the other to your opponent, who then
-    draws one more. hand[0] is the tile you were handed, hand[1] the one you
-    drew. A move is (x, y, r, which) with which indexing the hand."""
+    variants "two" and "three": that many tiles to choose from. The first
+    player draws them; each turn you place one, the rest stay for your
+    opponent, and one more is drawn while the stack lasts. The tiles left for
+    you come first in `hand`, the newly drawn one last. A move is
+    (x, y, r, which) with which indexing the hand."""
 
     def __init__(self, deck, first="C", variant="single"):
         assert sorted(deck) == sorted(FULL_DECK), "deck must be the 16 tiles"
         assert first in ("C", "V")
-        assert variant in ("single", "two")
+        assert variant in CHOICES
         self.deck = deck
         self.first = first
         self.variant = variant
         self.board = {}  # (x, y) -> edges as placed
         self.moves = []
-        if variant == "two":
-            self.hand = [deck[0], deck[1]]
-            self.pos = 2
-        else:
-            self.hand = [deck[0]]
-            self.pos = 1
+        n = CHOICES[variant]
+        self.hand = list(deck[:n])
+        self.pos = n
 
     # -- state ------------------------------------------------------------
     @property

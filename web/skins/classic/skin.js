@@ -76,7 +76,7 @@
       names: { C: 'Castian', V: 'Veridican' },
       levels: { novice: 'Novice', deacon: 'Deacon', abbot: 'Abbot' },
       twoPlayers: 'Two players',
-      variants: { single: 'One tile', two: 'Two tiles' },
+      variants: { single: 'One tile', two: 'Two tiles', three: 'Three tiles' },
       howToPlay: 'How to play',
       hint: 'Hint',
       menu: 'Menu',
@@ -94,7 +94,7 @@
       tilesLeft: n => (n === 0 ? 'No more tiles' : n === 1 ? '1 tile to come' : `${n} tiles to come`),
       rules: [
         'Veridican is the old doctrine and Castian the new. This floor remembers the schism between them, diocese by diocese.',
-        'Take turns laying tiles, Veridican first, each beside a tile already down, until they make a four by four square. There are always two tiles to choose from: place whichever you like, and the other stays for your opponent.',
+        'Take turns laying tiles, Veridican first, each beside a tile already down, until they make a four by four square. There are always three tiles to choose from: place whichever you like, and the other two stay for your opponent.',
         'Where two halves of the same symbol meet, that doctrine holds the diocese. Where the two doctrines meet, the diocese stays split: a heredox. Whoever holds more dioceses wins. If they are level, the old doctrine stands.',
         'Tap a tile to turn it. Drag it onto the floor to place it.',
       ],

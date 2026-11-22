@@ -117,5 +117,25 @@ class TwoInHand(unittest.TestCase):
             self.assertEqual(replay(g.transcript()).score(), g.score())
 
 
+class ThreeTiles(unittest.TestCase):
+    def test_hands(self):
+        g = Game(FULL_DECK, variant="three")   # deck starts A A A B B B ...
+        self.assertEqual(g.hand, ["A", "A", "A"])
+        g.play(0, 0, 0, 2)
+        self.assertEqual(g.hand, ["A", "A", "B"])
+
+    def test_sizes(self):
+        rng = random.Random(4)
+        for _ in range(200):
+            g = Game("".join(rng.sample(FULL_DECK, 16)), variant="three")
+            sizes = []
+            while not g.over:
+                sizes.append(len(g.hand))
+                g.play(*rng.choice(g.legal_moves()))
+            self.assertEqual(sizes, [3] * 14 + [2, 1])
+            self.assertEqual(len(g.board), 16)
+            self.assertEqual(replay(g.transcript()).score(), g.score())
+
+
 if __name__ == "__main__":
     unittest.main()

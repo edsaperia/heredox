@@ -10,9 +10,9 @@
   let game = null, mode = '1p', level = 'abbot', you = 'C';
   let pending = false;  // true while a human may move the tiles in hand
   let floats = [], drag = null, gen = 0, closable = false, ended = false, onDismiss = null;
-  // Two tiles is the main game. The one-tile game still works ('single') but
-  // its menu switch is commented out for now.
-  let variant = 'two';
+  // Three tiles to choose from is the main game. The two-tile ('two') and
+  // one-tile ('single') games still work; their menu switch is commented out.
+  let variant = 'three';
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const isHuman = sym => mode === '2p' || sym === you;
@@ -68,6 +68,11 @@
     boardEl.style.left = L.bx + 'px'; boardEl.style.top = L.by + 'px';
     boardEl.style.width = boardEl.style.height = L.B + 'px';
     stage.style.setProperty('--s', L.s + 'px');
+    // tiles in the tray shrink if that is what it takes to fit them side by side
+    const k = game ? game.choice : 3;
+    L.ts = Math.min(L.s, (side * 0.9) / (k * 1.07 + 0.1));
+    stage.style.setProperty('--ts', L.ts + 'px');
+    stage.style.setProperty('--tk', L.ts / L.s);
     stage.style.setProperty('--pulse', S.pulse);
     // The heredox, twice the height of the screen, inscribed in the page: the
     // figure's gradient runs one way and the ground's the other.
@@ -186,9 +191,15 @@
   // --- the tiles in hand ---------------------------------------------------
   // floats[i] shows game.hand[i]: {el, rot, pos, slot}. With two tiles to pick
   // from, the one not placed stays where it is for the next player.
-  function slotCentre(slot) {            // slot 0 or 1 of the tray; the single game uses the middle
-    const c = trayCentre();
-    return game && game.variant === 'two' ? { x: c.x + (slot - 0.5) * L.s * 1.06, y: c.y } : c;
+  function slotCentre(slot) {            // a slot of the tray, left to right
+    const c = trayCentre(), k = game ? game.choice : 1;
+    return { x: c.x + (slot - (k - 1) / 2) * L.ts * 1.07, y: c.y };
+  }
+  // tiles resting in the tray are drawn at the tray's size, which can be smaller than the board's
+  function rest(f, slot) {
+    f.slot = slot;
+    f.el.classList.add('intray');
+    setFloat(f, slotCentre(slot));
   }
   function setFloat(f, p) {
     f.pos = p;
@@ -203,11 +214,12 @@
     floats.forEach(f => { f.el.classList.toggle('mine', mine); f.el.classList.remove('arrive'); });
     while (floats.length < game.hand.length) {
       const i = floats.length;
-      const slot = floats.some(f => f.slot === 0) ? 1 : 0;
+      let slot = 0;
+      while (floats.some(f => f.slot === slot)) slot++;
       const f = { el: tileEl(H.TILES[game.hand[i]], 'float arrive' + (mine ? ' mine' : '')), rot: 0, pos: null, slot };
       f.el.style.transition = 'none';
       stage.appendChild(f.el);
-      setFloat(f, slotCentre(slot));
+      rest(f, slot);
       setRot(f, 0);
       void f.el.offsetWidth;
       f.el.style.transition = '';
@@ -234,6 +246,7 @@
     if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) {
       drag.moved = true;
       f.el.classList.add('dragging'); stage.classList.add('dragging');
+      f.el.classList.remove('intray');
     }
     if (drag.moved) {
       setFloat(f, { x: drag.ox + p.x - drag.sx, y: drag.oy + p.y - drag.sy });
@@ -256,7 +269,7 @@
       const g = gen;
       setTimeout(() => { if (g === gen) nextTurn(); }, 600);
     } else {
-      setFloat(f, { x: d.ox, y: d.oy });
+      rest(f, f.slot);
       markTarget(null);
       renderSide();
     }
@@ -304,8 +317,9 @@
     }
     await sleep(250);
     if (g !== gen) return;
-    f.el.style.transition = 'left .8s ease, top .8s ease';
+    f.el.style.transition = 'left .8s ease, top .8s ease, transform .8s ease';
     f.el.style.zIndex = 8;
+    f.el.classList.remove('intray');
     setFloat(f, cellCentre(x, y));
     await sleep(1050);
     if (g !== gen) return;
@@ -338,7 +352,8 @@
     stage.querySelectorAll('.float, .glow').forEach(n => n.remove());
     floats = []; pending = false; drag = null; ended = false;
     game = new H.Game(H.shuffledDeck(Math.random), 'V', variant);   // Veridican always moves first
-    stage.classList.toggle('two', variant === 'two');
+    stage.style.setProperty('--k', game.choice);
+    layout();
     closePanel(true);
     centre(); renderBoard(); renderSide();
     const g = gen;
@@ -430,7 +445,7 @@
     layout(); renderBoard();
     floats.forEach(f => {
       f.el.style.transition = 'none';
-      setFloat(f, slotCentre(f.slot));
+      rest(f, f.slot);
       void f.el.offsetWidth; f.el.style.transition = '';
     });
   });

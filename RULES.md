@@ -48,8 +48,11 @@ half a symbol ahead. There are no draws.
 - The 4 × 4 boundary floats.
 - Equal counts go to the player who moved first (changed 13:53; before that
   draws existed and counted as a loss for both computer players).
-- The main game is Two tiles (changed 14:30; see below). The one-tile game
-  described under Play is kept in the engines but is off the menu for now.
+- The main game is Three tiles (changed 2026-11-22 after the overnight
+  search: Veridican wins about 55% against 61% with two tiles, and fewer
+  games finish level). It plays as Two tiles below, with three to choose
+  from and two left for the opponent. The two-tile and one-tile games are
+  kept in the engines but are off the menu.
 
 ## Variants
 
