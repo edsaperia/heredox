@@ -90,7 +90,6 @@
       playAgain: 'Play again',
       chooseSide: 'Choose your side',
       tutor: 'Tutor mode',
-      tutorNote: 'after each move, see the stronger one you missed',
       sideNotes: { V: ['the old doctrine', 'moves first'], C: ['the new doctrine', 'moves second'] },
       summary: (v, c, k) => `Veridican holds ${v}, Castian ${c}; ${k} ${k === 1 ? 'remains' : 'remain'} split.` + (v === c ? ' Level, so the old doctrine stands.' : ''),
       tilesLeft: n => (n === 0 ? 'No more tiles' : n === 1 ? '1 tile to come' : `${n} tiles to come`),

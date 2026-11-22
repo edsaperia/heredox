@@ -368,16 +368,15 @@
     el.className = 'burn';
     el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
     let h = '<b></b>';
-    for (let i = 0; i < 11; i++) {        // tongues of flame along the tile
-      const u = (i + 0.5) / 11 + (Math.random() - 0.5) * 0.06;
-      h += `<i style="left:${(u * 100).toFixed(1)}%;top:${(60 + Math.random() * 42).toFixed(0)}%;--h:${(0.8 + Math.random() * 0.75).toFixed(2)};animation-delay:${(Math.random() * 0.3).toFixed(2)}s"></i>`;
-    }
-    for (let i = 0; i < 22; i++) {        // sparks
-      h += `<u style="left:${(Math.random() * 100).toFixed(0)}%;top:${(Math.random() * 80).toFixed(0)}%;--dx:${((Math.random() - 0.5) * 0.9).toFixed(2)};--dy:${(-0.6 - Math.random() * 1.1).toFixed(2)};animation-delay:${(0.1 + Math.random() * 0.6).toFixed(2)}s"></u>`;
+    for (let i = 0; i < 64; i++) {        // embers leave the tile's edge and drift outwards in every direction
+      const a = Math.random() * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+      const edge = 0.5 / Math.max(Math.abs(c), Math.abs(sn)) * (0.8 + Math.random() * 0.2);
+      const far = 0.45 + Math.random() * 1.0, wob = (Math.random() - 0.5) * 0.25;
+      h += `<u style="left:${(50 + c * edge * 100).toFixed(1)}%;top:${(50 + sn * edge * 100).toFixed(1)}%;--dx:${(c * far - sn * wob).toFixed(2)};--dy:${(sn * far + c * wob).toFixed(2)};--z:${(0.7 + Math.random() * 1.5).toFixed(2)};animation-duration:${(1.3 + Math.random() * 1.1).toFixed(2)}s;animation-delay:${(Math.random() * 0.45).toFixed(2)}s"></u>`;
     }
     el.innerHTML = h;
     stage.appendChild(el);
-    setTimeout(() => el.remove(), 2400);
+    setTimeout(() => el.remove(), 3100);
   }
 
   function hint() {
@@ -426,7 +425,7 @@
   function showSide(lv) {
     const btn = p => `<button class="card" data-act="side" data-side="${p}" data-level="${lv}">${S.portraits[p]}<span>${W.names[p]}</span>${W.sideNotes[p].map(n => `<small>${n}</small>`).join('')}</button>`;
     openPanel(`<h2>${W.chooseSide}</h2><div class="cards"><div class="group">${btn('V')}${btn('C')}</div></div>
-      <button class="tutor${tutor ? ' on' : ''}" data-act="tutor" data-level="${lv}"><i></i><span>${W.tutor}</span><small>${W.tutorNote}</small></button>`,
+      <button class="tutor${tutor ? ' on' : ''}" data-act="tutor" data-level="${lv}"><i></i><span>${W.tutor}</span></button>`,
       false, 'menu', showMenu);
   }
   function showMenu() {
